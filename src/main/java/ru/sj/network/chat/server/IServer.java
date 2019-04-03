@@ -11,6 +11,9 @@ public interface IServer {
 
     InetSocketAddress getAddress();
 
-    Integer getWorkers();
-    void setWorkers(Integer value);
+    int getWorkersCount();
+    void setWorkersCount(int value);
+
+    void setBufferCapacity(int value);
+    int getBufferCapacity();
 }

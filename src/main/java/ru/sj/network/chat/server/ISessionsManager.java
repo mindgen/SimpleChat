@@ -1,7 +1,5 @@
 package ru.sj.network.chat.server;
 
-import java.nio.channels.SocketChannel;
-
 /**
  * Created by Eugene Sinitsyn
  */

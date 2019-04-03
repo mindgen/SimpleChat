@@ -4,7 +4,7 @@ import ru.sj.network.chat.server.ISession;
 import ru.sj.network.chat.server.ISessionId;
 import ru.sj.network.chat.server.ISessionsManager;
 
-import java.util.UUID;
+import java.nio.ByteBuffer;
 
 /**
  * Created by Eugene Sinitsyn
@@ -29,6 +29,10 @@ public class SessionImpl implements ISession {
 
     public void close() {
         getManager().closeSession(this);
+    }
+
+    public void readData(ByteBuffer buffer) {
+        
     }
 
     void freeResources() {

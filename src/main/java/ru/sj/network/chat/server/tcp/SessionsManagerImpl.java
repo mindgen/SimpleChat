@@ -4,7 +4,6 @@ import ru.sj.network.chat.server.ISession;
 import ru.sj.network.chat.server.ISessionId;
 import ru.sj.network.chat.server.ISessionsManager;
 
-import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 
 /**

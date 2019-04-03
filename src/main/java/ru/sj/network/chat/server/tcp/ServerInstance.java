@@ -1,9 +1,11 @@
 package ru.sj.network.chat.server.tcp;
 
 import ru.sj.network.chat.server.IServer;
+import ru.sj.network.chat.server.ISession;
 
 import java.io.IOException;
 import java.net.*;
+import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -23,8 +25,10 @@ public class ServerInstance implements IServer {
     }
 
     public void start() {
-        for (Integer num = 0; num < mWorkers; ++num) {
-            Thread wrkThread = new Thread(new TcpServerWorker(this.getAddress(), new SessionsManagerImpl()),
+        for (int num = 0; num < mWorkersCount; ++num) {
+            Thread wrkThread = new Thread(new TcpServerWorker(this.getAddress(),
+                                            new SessionsManagerImpl(),
+                                            ByteBuffer.allocate(this.getBufferCapacity())),
                                             String.format("WrkThread_%d", num));
             wrkThread.start();
         }
@@ -34,14 +38,17 @@ public class ServerInstance implements IServer {
         return mAddress;
     }
 
-    private Integer mWorkers;
-    public Integer getWorkers() {
-        return mWorkers;
+    private int mWorkersCount;
+    public int getWorkersCount() {
+        return mWorkersCount;
+    }
+    public void setWorkersCount(int value) {
+        mWorkersCount = value;
     }
 
-    public void setWorkers(Integer value) {
-        mWorkers = value;
-    }
+    private int mBufferCapacity;
+    public void setBufferCapacity(int value) { mBufferCapacity = value; }
+    public int getBufferCapacity() { return mBufferCapacity; }
 }
 
 class TcpServerWorker implements Runnable {
@@ -49,10 +56,12 @@ class TcpServerWorker implements Runnable {
     private ServerSocketChannel mServerSocket;
     private InetSocketAddress mAddress;
     private SessionsManagerImpl mManager;
+    private ByteBuffer mBufer;
 
-    public TcpServerWorker(InetSocketAddress address, SessionsManagerImpl manager) {
+    public TcpServerWorker(InetSocketAddress address, SessionsManagerImpl manager, ByteBuffer buffer) {
         mAddress = address;
         mManager = manager;
+        mBufer = buffer;
     }
 
     public void run() {
@@ -101,8 +110,26 @@ class TcpServerWorker implements Runnable {
     }
 
     private void readData(SelectionKey key) {
-
+        ISession curSession = (ISession)key.attachment();
+        SocketChannel curSocket = (SocketChannel)key.channel();
+        try {
+            int bytesRead;
+            do {
+                bytesRead = curSocket.read(this.getBuffer());
+            } while (bytesRead > 0);
+        }
+        catch (IOException e)
+        {
+            curSession.close();
+            key.cancel();
+            return;
+        }
+        this.getBuffer().flip();
+        curSession.readData(this.getBuffer());
+        this.getBuffer().clear();
     }
+
+    private ByteBuffer getBuffer() { return mBufer; }
 
     private void writeData(SelectionKey key) {
 
