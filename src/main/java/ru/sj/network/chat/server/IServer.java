@@ -7,13 +7,10 @@ import java.net.InetSocketAddress;
  */
 
 public interface IServer {
-    void start();
+    void start() throws Exception;
+    void stop() throws Exception;
+    boolean isRunning();
 
     InetSocketAddress getAddress();
-
-    int getWorkersCount();
-    void setWorkersCount(int value);
-
-    void setBufferCapacity(int value);
-    int getBufferCapacity();
+    void setAddress(InetSocketAddress address) throws AlreadyStartedException;
 }

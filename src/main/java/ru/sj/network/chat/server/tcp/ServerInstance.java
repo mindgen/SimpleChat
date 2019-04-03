@@ -1,8 +1,11 @@
 package ru.sj.network.chat.server.tcp;
 
-import ru.sj.network.chat.server.IServer;
+import ru.sj.network.chat.server.AlreadyStartedException;
 import ru.sj.network.chat.server.ISession;
+import ru.sj.network.chat.server.ServerWorker;
+import ru.sj.network.chat.server.ThreadsServer;
 
+import javax.xml.crypto.KeySelector;
 import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
@@ -16,42 +19,25 @@ import java.nio.channels.spi.AbstractSelectableChannel;
  * Created by Eugene Sinitsyn
  */
 
-public class ServerInstance implements IServer {
+public class ServerInstance extends ThreadsServer {
 
-    private InetSocketAddress mAddress;
-    public ServerInstance(InetSocketAddress address)
-    {
-        this.mAddress = address;
+    private int mBufferCapacity = 32;
+    public void setBufferCapacity(int value) throws AlreadyStartedException {
+        throwIfStarted();
+        mBufferCapacity = value;
     }
-
-    public void start() {
-        for (int num = 0; num < mWorkersCount; ++num) {
-            Thread wrkThread = new Thread(new TcpServerWorker(this.getAddress(),
-                                            new SessionsManagerImpl(),
-                                            ByteBuffer.allocate(this.getBufferCapacity())),
-                                            String.format("WrkThread_%d", num));
-            wrkThread.start();
-        }
-    }
-
-    public InetSocketAddress getAddress() {
-        return mAddress;
-    }
-
-    private int mWorkersCount;
-    public int getWorkersCount() {
-        return mWorkersCount;
-    }
-    public void setWorkersCount(int value) {
-        mWorkersCount = value;
-    }
-
-    private int mBufferCapacity;
-    public void setBufferCapacity(int value) { mBufferCapacity = value; }
     public int getBufferCapacity() { return mBufferCapacity; }
+
+    @Override
+    protected ServerWorker createWorker()
+    {
+        return new TcpServerWorker(this.getAddress(),
+                new SessionsManagerImpl(),
+                ByteBuffer.allocate(this.getBufferCapacity()));
+    }
 }
 
-class TcpServerWorker implements Runnable {
+class TcpServerWorker extends ServerWorker {
 
     private ServerSocketChannel mServerSocket;
     private InetSocketAddress mAddress;
@@ -84,7 +70,7 @@ class TcpServerWorker implements Runnable {
         }
 
         mServerSocket.register(eventSelector, mServerSocket.validOps());
-        while (eventSelector.select() > -1) {
+        while (eventSelector.select() > -1 && !this.IsTerminated()) {
             for (SelectionKey currentEvent : eventSelector.selectedKeys()) {
                 if (!currentEvent.isValid()) continue;
                 if (currentEvent.isAcceptable()) {
@@ -112,21 +98,24 @@ class TcpServerWorker implements Runnable {
     private void readData(SelectionKey key) {
         ISession curSession = (ISession)key.attachment();
         SocketChannel curSocket = (SocketChannel)key.channel();
+
+        int bytesRead;
         try {
-            int bytesRead;
             do {
                 bytesRead = curSocket.read(this.getBuffer());
             } while (bytesRead > 0);
         }
         catch (IOException e)
         {
-            curSession.close();
-            key.cancel();
+            closeChannel(key);
             return;
         }
+
         this.getBuffer().flip();
         curSession.readData(this.getBuffer());
         this.getBuffer().clear();
+
+        if (bytesRead < 0) closeChannel(key);
     }
 
     private ByteBuffer getBuffer() { return mBufer; }
@@ -154,5 +143,21 @@ class TcpServerWorker implements Runnable {
 
     private void configureSocket(AbstractSelectableChannel sck) throws IOException {
         sck.configureBlocking(false);
+    }
+
+    private void closeChannel(SelectionKey key)  {
+        ISession curSession = (ISession)key.attachment();
+        curSession.close();
+        key.cancel();
+        try {
+            key.channel().close();
+        }
+        catch(IOException E) {}
+    }
+
+    @Override
+    public String getName()
+    {
+        return "NoneBlockWrk";
     }
 }
