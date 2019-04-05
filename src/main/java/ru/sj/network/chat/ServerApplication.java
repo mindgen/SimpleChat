@@ -1,8 +1,8 @@
 package ru.sj.network.chat;
 
-import ru.sj.network.chat.server.ServerFactory;
 import ru.sj.network.chat.server.ServerType;
 import ru.sj.network.chat.server.tcp.ServerInstance;
+import ru.sj.network.chat.server.ServerFactory;
 
 /**
  * Created by Eugene Sinitsyn

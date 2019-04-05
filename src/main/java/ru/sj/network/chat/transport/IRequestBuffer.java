@@ -1,4 +1,4 @@
-package ru.sj.network.chat.server;
+package ru.sj.network.chat.transport;
 
 import java.nio.ByteBuffer;
 
@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
  * Created by Eugene Sinitsyn
  */
 
-public interface IMessageBuffer {
+public interface IRequestBuffer {
     void writeToBuffer(ByteBuffer buffer);
 
     int remaining();

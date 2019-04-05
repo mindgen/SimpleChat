@@ -1,6 +1,4 @@
-package ru.sj.network.chat.server.tcp.transport;
-
-import ru.sj.network.chat.server.IMessageBuffer;
+package ru.sj.network.chat.transport;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -9,7 +7,7 @@ import java.nio.ByteBuffer;
  * Created by Eugene Sinitsyn
  */
 
-public class MessageBuffer implements IMessageBuffer {
+public class MessageBuffer implements IRequestBuffer {
     private ByteBuffer mBuffer;
 
     public void writeToBuffer(ByteBuffer buffer) {

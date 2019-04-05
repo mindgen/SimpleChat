@@ -1,9 +1,9 @@
-package ru.sj.network.chat.server.tcp.transport.binary;
+package ru.sj.network.chat.transport.binary;
 
-import ru.sj.network.chat.server.IMessage;
-import ru.sj.network.chat.server.IMessageBuffer;
-import ru.sj.network.chat.server.IMessageFactory;
-import ru.sj.network.chat.server.IMessageTransport;
+import ru.sj.network.chat.transport.IRequestBuilder;
+import ru.sj.network.chat.transport.INetworkTransport;
+import ru.sj.network.chat.transport.IRequestBuffer;
+import ru.sj.network.chat.transport.Request;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -16,16 +16,16 @@ import java.util.List;
  * Created by Eugene Sinitsyn
  */
 
-public class TransportBinary implements IMessageTransport {
+public class BinaryTransport implements INetworkTransport {
 
-    private IMessageFactory mMsgFactory;
-    public TransportBinary(IMessageFactory msgFactory) {
+    private IRequestBuilder mMsgFactory;
+    public BinaryTransport(IRequestBuilder msgFactory) {
         mMsgFactory = msgFactory;
     }
 
     @Override
-    public Collection<IMessage> decodeMessages(ByteBuffer buffer, IMessageBuffer msgBuffer) {
-        List<IMessage> resultMessages = new ArrayList<IMessage>();
+    public Collection<Request> decodeRequest(ByteBuffer buffer, IRequestBuffer msgBuffer) {
+        List<Request> resultMessages = new ArrayList<Request>();
         msgBuffer.writeToBuffer(buffer);
         msgBuffer.flip();
         try {
@@ -33,7 +33,7 @@ public class TransportBinary implements IMessageTransport {
             short msgLen = msgBuffer.getShort();
             byte[] msgPayload = new byte[msgLen];
             msgBuffer.array(msgPayload);
-            resultMessages.add(mMsgFactory.createMessage(msgPayload));
+            resultMessages.add(mMsgFactory.buildRequest(msgPayload));
         }
         catch (BufferUnderflowException e) {
             msgBuffer.reset();
@@ -42,7 +42,8 @@ public class TransportBinary implements IMessageTransport {
         return Collections.unmodifiableCollection(resultMessages);
     }
 
-    public ByteBuffer encodeMessages(Collection<IMessage> messages) {
+    @Override
+    public ByteBuffer encodeRequest(Collection<Request> messages) {
         return null;
     }
 }
