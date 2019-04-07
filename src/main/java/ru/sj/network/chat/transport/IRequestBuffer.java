@@ -1,5 +1,6 @@
 package ru.sj.network.chat.transport;
 
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 /**
@@ -15,13 +16,13 @@ public interface IRequestBuffer {
 
     void reset();
 
-    byte getByte();
+    byte getByte() throws BufferUnderflowException;
 
-    int getInt();
+    int getInt() throws BufferUnderflowException;
 
-    short getShort();
+    short getShort() throws BufferUnderflowException;
 
-    void array(byte[] dst);
+    void array(byte[] dst) throws BufferUnderflowException;
 
     void flip();
 

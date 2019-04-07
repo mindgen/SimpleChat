@@ -1,9 +1,6 @@
 package ru.sj.network.chat.transport.binary;
 
-import ru.sj.network.chat.transport.IRequestBuilder;
-import ru.sj.network.chat.transport.INetworkTransport;
-import ru.sj.network.chat.transport.IRequestBuffer;
-import ru.sj.network.chat.transport.Request;
+import ru.sj.network.chat.transport.*;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -18,9 +15,9 @@ import java.util.List;
 
 public class BinaryTransport implements INetworkTransport {
 
-    private IRequestBuilder mMsgFactory;
-    public BinaryTransport(IRequestBuilder msgFactory) {
-        mMsgFactory = msgFactory;
+    private IModelSerializer serializer;
+    public BinaryTransport(IModelSerializer serializer) {
+        this.serializer = serializer;
     }
 
     @Override
@@ -33,7 +30,9 @@ public class BinaryTransport implements INetworkTransport {
             short msgLen = msgBuffer.getShort();
             byte[] msgPayload = new byte[msgLen];
             msgBuffer.array(msgPayload);
-            resultMessages.add(mMsgFactory.buildRequest(msgPayload));
+            Request req = RequestBuilder.build(msgPayload, this.serializer);
+            if (null != req)
+                resultMessages.add(req);
         }
         catch (BufferUnderflowException e) {
             msgBuffer.reset();
