@@ -1,7 +1,10 @@
 package ru.sj.network.chat.server;
 
 
+import ru.sj.network.chat.transport.Request;
+
 import java.nio.ByteBuffer;
+import java.util.Collection;
 
 /**
  * Created by Eugene Sinitsyn
@@ -12,5 +15,5 @@ public interface ISession {
     ISessionsManager getManager();
     void close();
 
-    void readData(ByteBuffer buffer);
+    Collection<Request> readData(ByteBuffer buffer);
 }

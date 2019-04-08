@@ -1,14 +1,16 @@
 package ru.sj.network.chat.transport;
 
+import ru.sj.network.chat.server.IResponseExtension;
+
 /**
  * Created by Eugene Sinitsyn
  */
 
-public class Response {
-    public Response(Object data) {
-        this.data = data;
-    }
+public class Response implements IResponseExtension {
+    public Response() { }
 
-    private Object data;
+    private Object data = null;
     public Object getData() { return data; }
+
+    void setData(Object data) { this.data = data; }
 }

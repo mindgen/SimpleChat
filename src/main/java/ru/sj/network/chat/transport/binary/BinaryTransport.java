@@ -30,7 +30,7 @@ public class BinaryTransport implements INetworkTransport {
             short msgLen = msgBuffer.getShort();
             byte[] msgPayload = new byte[msgLen];
             msgBuffer.array(msgPayload);
-            Request req = RequestBuilder.build(msgPayload, this.serializer);
+            Request req = RequestSerializer.deserialize(msgPayload, this.serializer);
             if (null != req)
                 resultMessages.add(req);
         }
@@ -44,5 +44,10 @@ public class BinaryTransport implements INetworkTransport {
     @Override
     public ByteBuffer encodeRequest(Collection<Request> messages) {
         return null;
+    }
+
+    @Override
+    public Response createEmptyResponse() {
+        return new BinaryResponse();
     }
 }

@@ -10,4 +10,6 @@ import java.util.Collection;
 public interface INetworkTransport {
     Collection<Request> decodeRequest(ByteBuffer buffer, IRequestBuffer msgBuffer);
     ByteBuffer encodeRequest(Collection<Request> messages);
+
+    Response createEmptyResponse();
 }

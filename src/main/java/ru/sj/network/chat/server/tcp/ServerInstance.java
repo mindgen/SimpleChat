@@ -1,9 +1,10 @@
 package ru.sj.network.chat.server.tcp;
 
-import ru.sj.network.chat.server.AlreadyStartedException;
-import ru.sj.network.chat.server.ISession;
-import ru.sj.network.chat.server.ServerWorker;
-import ru.sj.network.chat.server.ThreadsServer;
+import ru.sj.network.chat.server.*;
+import ru.sj.network.chat.transport.ObjectModelSerializer;
+import ru.sj.network.chat.transport.Request;
+import ru.sj.network.chat.transport.Response;
+import ru.sj.network.chat.transport.binary.BinaryTransport;
 
 import java.io.IOException;
 import java.net.*;
@@ -13,6 +14,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.AbstractSelectableChannel;
+import java.util.Collection;
 
 /**
  * Created by Eugene Sinitsyn
@@ -31,7 +33,8 @@ public class ServerInstance extends ThreadsServer {
     protected ServerWorker createWorker()
     {
         return new TcpServerWorker(this.getAddress(),
-                new SessionsManagerImpl(),
+                new SessionsManagerImpl(new BinaryTransport(new ObjectModelSerializer()),
+                                        new SessionBufferFactoryImpl()),
                 ByteBuffer.allocate(this.getBufferCapacity()));
     }
 
@@ -110,8 +113,13 @@ public class ServerInstance extends ThreadsServer {
             }
 
             this.getBuffer().flip();
-            curSession.readData(this.getBuffer());
+            Collection<Request> requests = curSession.readData(this.getBuffer());
             this.getBuffer().clear();
+
+            Collection<Response> responses = ExecutionContext.getInstance().getExecutor().executeCmds(requests,
+                    curSession.getManager().getTransport(), ExecutionContext.getInstance().getRequestController());
+            // TO-DO
+            // Set ready for write
 
             if (bytesRead < 0) closeChannel(key);
         }

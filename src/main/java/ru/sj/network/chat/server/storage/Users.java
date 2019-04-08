@@ -7,7 +7,7 @@ import java.util.HashMap;
  */
 
 public class Users extends LockedEntity {
-    Users(){
+    public Users(){
         this.users = new HashMap<String, User>();
     }
 

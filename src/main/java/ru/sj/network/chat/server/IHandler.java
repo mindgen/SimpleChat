@@ -8,5 +8,5 @@ import ru.sj.network.chat.transport.Response;
  */
 
 public interface IHandler {
-    Object doRequest(Request req);
+    Object doRequest(Request req, IResponseExtension extension);
 }

@@ -17,7 +17,7 @@ import static java.lang.Integer.min;
 public class Messages extends LockedEntity{
     private AtomicInteger curId;
 
-    Messages(){
+    public Messages(){
         this.msgContainer = new ArrayList<Message>();
         curId = new AtomicInteger(0);
     };

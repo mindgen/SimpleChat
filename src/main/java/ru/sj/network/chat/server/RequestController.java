@@ -9,9 +9,9 @@ import java.util.TreeMap;
  * Created by Eugene Sinitsyn
  */
 
-public class Controller {
+public class RequestController {
 
-    Controller() {
+    public RequestController() {
         this.handlers = new TreeMap<>();
     }
 
@@ -23,22 +23,17 @@ public class Controller {
         handlers.remove(model);
     }
 
-    public IHandler getHandler(Class<?> model) {
+    private IHandler getHandler(Class<?> model) {
         return handlers.get(model);
     }
 
-    public Response doRequest(Request req) {
-        Response result = null;
-        IHandler handler = getHandler(req.getData().getClass());
+    public Object doRequest(Request request, IResponseExtension extension) {
+        IHandler handler = getHandler(request.getData().getClass());
         if (null != handler) {
-            result = new Response(handler.doRequest(req));
-        }
-        else {
-
+            return handler.doRequest(request, extension);
         }
 
-        return result;
-
+        return null;
     }
 
     private TreeMap<Class<?>, IHandler> handlers;
