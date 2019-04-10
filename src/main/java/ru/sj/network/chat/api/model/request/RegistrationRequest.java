@@ -12,7 +12,9 @@ import java.io.Serializable;
 public class RegistrationRequest extends StringModel implements Serializable  {
     private static final long serialVersionUID = 1L;
 
-    public RegistrationRequest() { }
+    public RegistrationRequest() { super(RequestType.Registration); }
+
+    public void setName(String userName) { this.setValue(userName);}
 
     private void writeObject(ObjectOutputStream oos)
             throws IOException {

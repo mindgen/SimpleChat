@@ -2,6 +2,9 @@ package ru.sj.network.chat.transport.binary;
 
 import ru.sj.network.chat.transport.*;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -42,8 +45,15 @@ public class BinaryTransport implements INetworkTransport {
     }
 
     @Override
-    public ByteBuffer encodeRequest(Collection<Request> messages) {
-        return null;
+    OutputStream encodeRequest(Request req) {
+        ByteArrayOutputStream result_stream = new ByteArrayOutputStream();
+        try {
+            RequestSerializer.serialize(req, result_stream, this.serializer);
+        }
+        catch (IOException e)
+        {
+
+        }
     }
 
     @Override

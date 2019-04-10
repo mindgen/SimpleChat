@@ -1,28 +1,19 @@
-package ru.sj.network.chat.api.model.request;
+package ru.sj.network.chat.api.model.response;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 
-/**
- * Created by Eugene Sinitsyn
- */
-
-public class GetMessagesRequest extends StateModel implements Serializable {
+public class RegistrationResponse extends BaseResponse {
     private static final long serialVersionUID = 1L;
-
-    public GetMessagesRequest() { super(RequestType.GetMessages); }
 
     private void writeObject(ObjectOutputStream oos)
             throws IOException {
         oos.defaultWriteObject();
-        oos.writeInt(this.getLastState());
     }
 
     private void readObject(ObjectInputStream ois)
             throws ClassNotFoundException, IOException {
         ois.defaultReadObject();
-        this.setLastState(ois.readInt());
     }
 }

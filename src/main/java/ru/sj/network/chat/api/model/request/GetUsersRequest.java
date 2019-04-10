@@ -12,7 +12,7 @@ import java.io.Serializable;
 public class GetUsersRequest extends StateModel implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public GetUsersRequest() { }
+    public GetUsersRequest() { super(RequestType.GetUsers); }
 
     private void writeObject(ObjectOutputStream oos)
             throws IOException {

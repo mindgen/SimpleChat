@@ -1,5 +1,6 @@
 package ru.sj.network.chat.transport;
 
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 
@@ -9,7 +10,7 @@ import java.util.Collection;
 
 public interface INetworkTransport {
     Collection<Request> decodeRequest(ByteBuffer buffer, IRequestBuffer msgBuffer);
-    ByteBuffer encodeRequest(Collection<Request> messages);
+    OutputStream encodeRequest(Request req);
 
     Response createEmptyResponse();
 }

@@ -4,12 +4,9 @@ package ru.sj.network.chat.api.model.request;
  * Created by Eugene Sinitsyn
  */
 
-public abstract class StringModel {
+public abstract class StringModel extends RequestBase {
 
-    StringModel() {};
-    StringModel(String value) {
-        this.value = value;
-    }
+    StringModel(RequestType type) { super(type);}
 
     private String value = null;
     public String getValue() { return value; }

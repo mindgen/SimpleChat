@@ -1,5 +1,7 @@
 package ru.sj.network.chat.api.model.request;
 
+import ru.sj.network.chat.transport.Request;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -12,7 +14,7 @@ import java.io.Serializable;
 public class SendMsgRequest extends StringModel implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public SendMsgRequest() { }
+    public SendMsgRequest() { super(RequestType.SendMessage); }
 
     private void writeObject(ObjectOutputStream oos)
             throws IOException {
