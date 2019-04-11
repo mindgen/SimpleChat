@@ -1,9 +1,7 @@
 package ru.sj.network.chat.api.model.request;
 
+import ru.sj.network.chat.transport.Request;
+
 public abstract class RequestBase {
-
-    public RequestBase(RequestType type) {this.type = type; }
-
-    private transient RequestType type;
-    public RequestType getType() { return this.type; }
+    public abstract RequestType getType();
 }

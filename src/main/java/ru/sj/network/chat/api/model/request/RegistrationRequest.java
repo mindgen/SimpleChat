@@ -12,8 +12,6 @@ import java.io.Serializable;
 public class RegistrationRequest extends StringModel implements Serializable  {
     private static final long serialVersionUID = 1L;
 
-    public RegistrationRequest() { super(RequestType.Registration); }
-
     public void setName(String userName) { this.setValue(userName);}
 
     private void writeObject(ObjectOutputStream oos)
@@ -27,5 +25,10 @@ public class RegistrationRequest extends StringModel implements Serializable  {
         ois.defaultReadObject();
         String val = ois.readUTF();
         this.setValue(val);
+    }
+
+    @Override
+    public RequestType getType() {
+        return RequestType.Registration;
     }
 }

@@ -6,6 +6,8 @@ import ru.sj.network.chat.server.storage.Messages;
 import ru.sj.network.chat.server.storage.Users;
 import ru.sj.network.chat.server.tcp.ServerInstance;
 
+import java.net.InetSocketAddress;
+
 /**
  * Created by Eugene Sinitsyn
  */
@@ -18,6 +20,7 @@ public final class ServerApplication {
 
             ServerInstance srv = (ServerInstance)ServerFactory.getServer(ServerType.BinaryTcp);
             srv.setWorkersCount(Runtime.getRuntime().availableProcessors());
+            srv.setAddress(new InetSocketAddress(1234));
             srv.setBufferCapacity(1024);
             srv.start();
 

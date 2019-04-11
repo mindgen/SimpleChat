@@ -1,6 +1,7 @@
 package ru.sj.network.chat.transport.binary;
 
 import ru.sj.network.chat.api.model.request.RequestBase;
+import ru.sj.network.chat.api.model.response.BaseResponse;
 import ru.sj.network.chat.transport.*;
 
 import java.io.*;
@@ -33,7 +34,7 @@ public class BinaryTransport implements INetworkTransport {
     }
 
     @Override
-    public Collection<Request> decodeRequest(ByteBuffer buffer, IRequestBuffer msgBuffer) {
+    public Collection<Request> decodeRequest(ByteBuffer buffer, IRequestBuffer msgBuffer) throws InvalidProtocolException {
         List<Request> resultMessages = new ArrayList<Request>();
         msgBuffer.writeToBuffer(buffer);
         msgBuffer.flip();
@@ -47,6 +48,9 @@ public class BinaryTransport implements INetworkTransport {
                     Object objectData = SerializerProxy.deserialize(msgPayload, this.serializer);
                     if (null != objectData) {
                         resultMessages.add(this.createRequest((RequestBase)objectData));
+                    }
+                    else {
+                        throw new InvalidProtocolException();
                     }
                 }
                 else {
@@ -89,13 +93,24 @@ public class BinaryTransport implements INetworkTransport {
         short size = reader.readShort();
         ByteArrayInputStream objectStream = new ByteArrayInputStream(reader.readNBytes(size));
         Object modelObject = SerializerProxy.deserialize(objectStream, this.serializer);
-        if (modelObject instanceof Response)
-            return (Response)modelObject;
+        if (modelObject instanceof BaseResponse) {
+            Response response = createEmptyResponse();
+            response.setData(modelObject);
 
-        return null;
+            return response;
+        }
+        else throw new IOException();
     }
 
     public void encodeResponse(Response response, OutputStream stream) throws IOException {
-        SerializerProxy.serialize(response, stream, this.serializer);
+        ByteArrayOutputStream object_stream = new ByteArrayOutputStream();
+        SerializerProxy.serialize(response.getData(), object_stream, this.serializer);
+
+        DataOutputStream writer = new DataOutputStream(stream);
+        writer.writeShort(object_stream.size());
+        writer.flush();
+        writer.close();
+
+        object_stream.writeTo(stream);
     }
 }

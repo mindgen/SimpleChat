@@ -23,7 +23,7 @@ public class ObjectModelSerializer implements IModelSerializer {
             objectModel = objectStream.readObject();
             objectStream.close();
         }
-        catch (Exception ex) {}
+        catch (Exception ex) { ex.printStackTrace(); }
 
         return objectModel;
     }

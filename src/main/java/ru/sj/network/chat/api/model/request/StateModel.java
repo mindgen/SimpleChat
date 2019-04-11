@@ -5,8 +5,6 @@ package ru.sj.network.chat.api.model.request;
  */
 
 public abstract class StateModel extends RequestBase {
-    public StateModel(RequestType type) { super(type); }
-
 
     private int lastState = -1;
     public int getLastState() { return lastState; }

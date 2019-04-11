@@ -14,7 +14,7 @@ import java.util.Collection;
  */
 
 public interface INetworkTransport {
-    Collection<Request> decodeRequest(ByteBuffer buffer, IRequestBuffer msgBuffer);
+    Collection<Request> decodeRequest(ByteBuffer buffer, IRequestBuffer msgBuffer) throws InvalidProtocolException;
     ByteArrayOutputStream encodeRequest(Request req);
 
     Response decodeResponse(InputStream inStream) throws IOException;

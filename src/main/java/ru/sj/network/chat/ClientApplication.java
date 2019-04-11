@@ -19,7 +19,7 @@ public final class ClientApplication {
             String hostname = reader.readLine();
 
             System.out.println("Server port");
-            int port = reader.read();
+            Integer port = Integer.parseInt(reader.readLine());
             client.connect(new InetSocketAddress(hostname, port));
 
             boolean result = client.registration("User1");

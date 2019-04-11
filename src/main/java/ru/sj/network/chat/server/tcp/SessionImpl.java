@@ -3,10 +3,7 @@ package ru.sj.network.chat.server.tcp;
 import ru.sj.network.chat.server.ISession;
 import ru.sj.network.chat.server.ISessionId;
 import ru.sj.network.chat.server.ISessionsManager;
-import ru.sj.network.chat.transport.INetworkTransport;
-import ru.sj.network.chat.transport.IRequestBuffer;
-import ru.sj.network.chat.transport.Request;
-import ru.sj.network.chat.transport.Response;
+import ru.sj.network.chat.transport.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -50,7 +47,7 @@ public class SessionImpl implements ISession {
     }
 
     @Override
-    public Collection<Request> readData(ByteBuffer buffer) {
+    public Collection<Request> readData(ByteBuffer buffer) throws InvalidProtocolException {
         Collection<Request> requests = this.getManager().getTransport().decodeRequest(buffer, sessionBuffer);
 
         return requests;
@@ -87,11 +84,13 @@ public class SessionImpl implements ISession {
                 return false;
             }
 
-            if (null == response) return false;
+            if (null == response) {
+                buffer.flip();
+                return false;
+            }
 
             transport.encodeResponse(response, stream);
             buffer = ByteBuffer.wrap(stream.getData());
-            buffer.flip();
 
             return true;
         }

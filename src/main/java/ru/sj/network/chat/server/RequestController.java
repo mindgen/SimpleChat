@@ -16,25 +16,26 @@ public class RequestController {
     }
 
     public void registerHandler(Class<?> model, IHandler handler) {
-        handlers.put(model, handler);
+        handlers.put(model.getName(), handler);
     }
 
     public void unregisterHandler(Class<?> model) {
-        handlers.remove(model);
+        handlers.remove(model.getName());
     }
 
     private IHandler getHandler(Class<?> model) {
-        return handlers.get(model);
+        return handlers.get(model.getName());
     }
 
-    public Object doRequest(Request request, IResponseExtension extension) {
+    public void doRequest(Request request, Response response) {
         IHandler handler = getHandler(request.getData().getClass());
         if (null != handler) {
-            return handler.doRequest(request, extension);
+            handler.doRequest(request, response);
         }
-
-        return null;
+        else {
+            response.setErrorData();
+        }
     }
 
-    private TreeMap<Class<?>, IHandler> handlers;
+    private TreeMap<String, IHandler> handlers;
 }

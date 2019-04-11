@@ -4,8 +4,6 @@ import ru.sj.network.chat.transport.INetworkTransport;
 import ru.sj.network.chat.transport.Request;
 import ru.sj.network.chat.transport.Response;
 
-import java.util.Collection;
-
 /**
  * Created by Eugene Sinitsyn
  */
@@ -14,6 +12,9 @@ public class RequestExecutor {
     public Response executeCmds(Request request,
                                      INetworkTransport transport,
                                      RequestController controller) {
-        return null;
+        Response response = transport.createEmptyResponse();
+        controller.doRequest(request, response);
+
+        return response;
     }
 }

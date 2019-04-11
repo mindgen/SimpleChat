@@ -12,8 +12,6 @@ import java.io.Serializable;
 public class GetUsersRequest extends StateModel implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    public GetUsersRequest() { super(RequestType.GetUsers); }
-
     private void writeObject(ObjectOutputStream oos)
             throws IOException {
         oos.defaultWriteObject();
@@ -24,5 +22,10 @@ public class GetUsersRequest extends StateModel implements Serializable {
             throws ClassNotFoundException, IOException {
         ois.defaultReadObject();
         this.setLastState(ois.readInt());
+    }
+
+    @Override
+    public RequestType getType() {
+        return RequestType.GetUsers;
     }
 }

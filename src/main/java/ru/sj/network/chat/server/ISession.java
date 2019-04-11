@@ -1,6 +1,7 @@
 package ru.sj.network.chat.server;
 
 
+import ru.sj.network.chat.transport.InvalidProtocolException;
 import ru.sj.network.chat.transport.Request;
 import ru.sj.network.chat.transport.Response;
 
@@ -17,7 +18,7 @@ public interface ISession {
     ISessionsManager getManager();
     void close();
 
-    Collection<Request> readData(ByteBuffer buffer);
+    Collection<Request> readData(ByteBuffer buffer) throws InvalidProtocolException;
 
     void storeResponse(Response response);
 

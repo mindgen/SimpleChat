@@ -1,6 +1,7 @@
 package ru.sj.network.chat.server.tcp;
 
 import ru.sj.network.chat.server.*;
+import ru.sj.network.chat.transport.InvalidProtocolException;
 import ru.sj.network.chat.transport.ObjectModelSerializer;
 import ru.sj.network.chat.transport.Request;
 import ru.sj.network.chat.transport.Response;
@@ -60,6 +61,7 @@ public class ServerInstance extends ThreadsServer {
             }
             catch (IOException e)
             {
+                e.printStackTrace();
                 // TO-DO
                 // Inform main thread about this
             }
@@ -75,12 +77,18 @@ public class ServerInstance extends ThreadsServer {
             while (eventSelector.select() > -1 && !this.IsTerminated()) {
                 for (SelectionKey currentEvent : eventSelector.selectedKeys()) {
                     if (!currentEvent.isValid()) continue;
-                    if (currentEvent.isAcceptable()) {
-                        acceptConnection(currentEvent);
+                    try {
+                        if (currentEvent.isAcceptable()) {
+                            acceptConnection(currentEvent);
+                        }
+                        else {
+                            if (currentEvent.isReadable()) readData(currentEvent);
+                            if (currentEvent.isWritable()) writeData(currentEvent);
+                        }
                     }
-                    else {
-                        if (currentEvent.isReadable()) readData(currentEvent);
-                        if (currentEvent.isWritable()) writeData(currentEvent);
+                    catch (Exception e)
+                    {
+                        closeChannel(currentEvent);
                     }
                 }
                 eventSelector.selectedKeys().clear();
@@ -95,7 +103,7 @@ public class ServerInstance extends ThreadsServer {
             regKey.attach(mManager.openSession());
         }
 
-        private void readData(SelectionKey key) {
+        private void readData(SelectionKey key) throws IOException, InvalidProtocolException {
             ISession curSession = (ISession)key.attachment();
             SocketChannel curSocket = (SocketChannel)key.channel();
 
@@ -105,14 +113,7 @@ public class ServerInstance extends ThreadsServer {
             }
 
             int bytesRead;
-            try {
-                bytesRead = curSocket.read(this.getBuffer());
-            }
-            catch (IOException e)
-            {
-                closeChannel(key);
-                return;
-            }
+            bytesRead = curSocket.read(this.getBuffer());
 
             this.getBuffer().flip();
             Collection<Request> requests = curSession.readData(this.getBuffer());
@@ -123,7 +124,7 @@ public class ServerInstance extends ThreadsServer {
                         curSession.getManager().getTransport(), ExecutionContext.getInstance().getRequestController());
 
                 curSession.storeResponse(response);
-                key.interestOpsAnd(SelectionKey.OP_WRITE);
+                key.interestOpsOr(SelectionKey.OP_WRITE);
             }
 
             if (bytesRead < 0) {
@@ -133,7 +134,7 @@ public class ServerInstance extends ThreadsServer {
 
         private ByteBuffer getBuffer() { return mBuffer; }
 
-        private void writeData(SelectionKey key) {
+        private void writeData(SelectionKey key) throws IOException {
             ISession curSession = (ISession)key.attachment();
             SocketChannel curSocket = (SocketChannel)key.channel();
 
@@ -145,20 +146,14 @@ public class ServerInstance extends ThreadsServer {
             key.interestOpsAnd(~SelectionKey.OP_WRITE);
             while (true)
             {
-                try {
-                    curSession.updateWriteBuffer();
-                    curSocket.write(curSession.getWriteBuffer());
-                }
-                catch (Exception E)
-                {
-                    closeChannel(key);
-                    return;
-                }
+                curSession.updateWriteBuffer();
+                int wCnt = curSocket.write(curSession.getWriteBuffer());
+
                 curSession.getWriteBuffer().compact();
                 if (curSession.getWriteBuffer().position() > 0) {
                     key.interestOpsAnd(SelectionKey.OP_WRITE);
                     break;
-                }
+                } else if (0 == wCnt) break;
             }
         }
 
@@ -175,8 +170,8 @@ public class ServerInstance extends ThreadsServer {
         private void configureServerSocket(ServerSocketChannel sckChannel) throws IOException {
             configureSocket(sckChannel);
 
-            sckChannel.socket().setOption(StandardSocketOptions.SO_REUSEADDR, true);
-            sckChannel.socket().setOption(StandardSocketOptions.SO_REUSEPORT, true);
+            sckChannel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
+            sckChannel.setOption(StandardSocketOptions.SO_REUSEPORT, true);
         }
 
         private void configureSocket(AbstractSelectableChannel sck) throws IOException {
@@ -189,7 +184,8 @@ public class ServerInstance extends ThreadsServer {
 
         private void closeChannel(SelectionKey key)  {
             ISession curSession = (ISession)key.attachment();
-            curSession.close();
+            if (null != curSession)
+                curSession.close();
             cancelSelectedKey(key);
             try {
                 key.channel().close();
