@@ -11,7 +11,7 @@ import java.util.Collection;
  */
 
 public class RequestExecutor {
-    public Collection<Response> executeCmds(Collection<Request> requests,
+    public Response executeCmds(Request request,
                                      INetworkTransport transport,
                                      RequestController controller) {
         return null;

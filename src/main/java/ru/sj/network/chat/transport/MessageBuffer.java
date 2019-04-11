@@ -12,13 +12,16 @@ public class MessageBuffer implements IRequestBuffer {
 
     public void writeToBuffer(ByteBuffer buffer) {
         if (null == mBuffer)
-            mBuffer = ByteBuffer.allocate(buffer.limit());
+            mBuffer = ByteBuffer.allocate(buffer.remaining());
         else
         {
-            ByteBuffer newBuffer = ByteBuffer.allocate(mBuffer.capacity() + buffer.limit());
-            mBuffer.flip();
-            newBuffer.put(mBuffer);
-            mBuffer = newBuffer;
+            if (buffer.remaining() > mBuffer.remaining())
+            {
+                mBuffer.flip();
+                ByteBuffer newBuffer = ByteBuffer.allocate((int)((mBuffer.remaining() + buffer.remaining()) * 1.5));
+                newBuffer.put(mBuffer);
+                mBuffer = newBuffer;
+            }
         }
         mBuffer.put(buffer);
     }

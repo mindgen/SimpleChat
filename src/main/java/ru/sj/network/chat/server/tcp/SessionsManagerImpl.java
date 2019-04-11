@@ -5,8 +5,10 @@ import ru.sj.network.chat.server.ISessionId;
 import ru.sj.network.chat.server.ISessionsManager;
 import ru.sj.network.chat.transport.INetworkTransport;
 import ru.sj.network.chat.transport.MessageBuffer;
+import ru.sj.network.chat.transport.Response;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 
 /**
  * Created by Eugene Sinitsyn
@@ -25,7 +27,7 @@ public class SessionsManagerImpl implements ISessionsManager {
     }
 
     public ISession openSession() {
-        SessionImpl newSession = new SessionImpl(this, this.bufFactory.createRequestBuffer());
+        SessionImpl newSession = new SessionImpl(this, this.bufFactory.createRequestBuffer(), new LinkedList<>());
         mSessions.put(newSession.getId(), newSession);
         return newSession;
     }

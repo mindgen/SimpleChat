@@ -43,12 +43,13 @@ public class ServerInstance extends ThreadsServer {
         private ServerSocketChannel mServerSocket;
         private InetSocketAddress mAddress;
         private SessionsManagerImpl mManager;
-        private ByteBuffer mBufer;
+        private ByteBuffer mBuffer;
 
-        public TcpServerWorker(InetSocketAddress address, SessionsManagerImpl manager, ByteBuffer buffer) {
+        public TcpServerWorker(InetSocketAddress address, SessionsManagerImpl manager,
+                               ByteBuffer Buffer) {
             mAddress = address;
             mManager = manager;
-            mBufer = buffer;
+            mBuffer = Buffer;
         }
 
         public void run() {
@@ -77,11 +78,9 @@ public class ServerInstance extends ThreadsServer {
                     if (currentEvent.isAcceptable()) {
                         acceptConnection(currentEvent);
                     }
-                    else if (currentEvent.isReadable()) {
-                        readData(currentEvent);
-                    }
-                    else if (currentEvent.isWritable()) {
-                        writeData(currentEvent);
+                    else {
+                        if (currentEvent.isReadable()) readData(currentEvent);
+                        if (currentEvent.isWritable()) writeData(currentEvent);
                     }
                 }
                 eventSelector.selectedKeys().clear();
@@ -100,11 +99,14 @@ public class ServerInstance extends ThreadsServer {
             ISession curSession = (ISession)key.attachment();
             SocketChannel curSocket = (SocketChannel)key.channel();
 
+            if (!key.isValid()) {
+                closeChannel(key);
+                return;
+            }
+
             int bytesRead;
             try {
-                do {
-                    bytesRead = curSocket.read(this.getBuffer());
-                } while (bytesRead > 0);
+                bytesRead = curSocket.read(this.getBuffer());
             }
             catch (IOException e)
             {
@@ -116,18 +118,48 @@ public class ServerInstance extends ThreadsServer {
             Collection<Request> requests = curSession.readData(this.getBuffer());
             this.getBuffer().clear();
 
-            Collection<Response> responses = ExecutionContext.getInstance().getExecutor().executeCmds(requests,
-                    curSession.getManager().getTransport(), ExecutionContext.getInstance().getRequestController());
-            // TO-DO
-            // Set ready for write
+            for (Request req: requests) {
+                Response response = ExecutionContext.getInstance().getExecutor().executeCmds(req,
+                        curSession.getManager().getTransport(), ExecutionContext.getInstance().getRequestController());
 
-            if (bytesRead < 0) closeChannel(key);
+                curSession.storeResponse(response);
+                key.interestOpsAnd(SelectionKey.OP_WRITE);
+            }
+
+            if (bytesRead < 0) {
+                closeChannel(key);
+            }
         }
 
-        private ByteBuffer getBuffer() { return mBufer; }
+        private ByteBuffer getBuffer() { return mBuffer; }
 
         private void writeData(SelectionKey key) {
+            ISession curSession = (ISession)key.attachment();
+            SocketChannel curSocket = (SocketChannel)key.channel();
 
+            if (!key.isValid()) {
+                closeChannel(key);
+                return;
+            }
+
+            key.interestOpsAnd(~SelectionKey.OP_WRITE);
+            while (true)
+            {
+                try {
+                    curSession.updateWriteBuffer();
+                    curSocket.write(curSession.getWriteBuffer());
+                }
+                catch (Exception E)
+                {
+                    closeChannel(key);
+                    return;
+                }
+                curSession.getWriteBuffer().compact();
+                if (curSession.getWriteBuffer().position() > 0) {
+                    key.interestOpsAnd(SelectionKey.OP_WRITE);
+                    break;
+                }
+            }
         }
 
         private Selector openSelector() throws IOException {
@@ -151,10 +183,14 @@ public class ServerInstance extends ThreadsServer {
             sck.configureBlocking(false);
         }
 
+        private void cancelSelectedKey(SelectionKey key) {
+            key.cancel();
+        }
+
         private void closeChannel(SelectionKey key)  {
             ISession curSession = (ISession)key.attachment();
             curSession.close();
-            key.cancel();
+            cancelSelectedKey(key);
             try {
                 key.channel().close();
             }

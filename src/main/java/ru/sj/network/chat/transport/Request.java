@@ -11,4 +11,5 @@ public class Request {
 
     private Object data;
     public Object getData() { return data; }
+    protected void setData(Object data) { this.data = data; }
 }

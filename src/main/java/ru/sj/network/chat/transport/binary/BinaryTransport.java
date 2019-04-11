@@ -1,10 +1,9 @@
 package ru.sj.network.chat.transport.binary;
 
+import ru.sj.network.chat.api.model.request.RequestBase;
 import ru.sj.network.chat.transport.*;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -24,18 +23,37 @@ public class BinaryTransport implements INetworkTransport {
     }
 
     @Override
+    public Response createEmptyResponse() {
+        return new BinaryResponse();
+    }
+
+    @Override
+    public Request createRequest(RequestBase requestData) {
+        return new BinaryRequest(requestData);
+    }
+
+    @Override
     public Collection<Request> decodeRequest(ByteBuffer buffer, IRequestBuffer msgBuffer) {
         List<Request> resultMessages = new ArrayList<Request>();
         msgBuffer.writeToBuffer(buffer);
         msgBuffer.flip();
         try {
-            msgBuffer.mark();
-            short msgLen = msgBuffer.getShort();
-            byte[] msgPayload = new byte[msgLen];
-            msgBuffer.array(msgPayload);
-            Request req = RequestSerializer.deserialize(msgPayload, this.serializer);
-            if (null != req)
-                resultMessages.add(req);
+            while (true) {
+                msgBuffer.mark();
+                short msgLen = msgBuffer.getShort();
+                if (msgBuffer.remaining() >= msgLen) {
+                    byte[] msgPayload = new byte[msgLen];
+                    msgBuffer.array(msgPayload);
+                    Object objectData = SerializerProxy.deserialize(msgPayload, this.serializer);
+                    if (null != objectData) {
+                        resultMessages.add(this.createRequest((RequestBase)objectData));
+                    }
+                }
+                else {
+                    msgBuffer.reset();
+                    break;
+                }
+            }
         }
         catch (BufferUnderflowException e) {
             msgBuffer.reset();
@@ -45,19 +63,39 @@ public class BinaryTransport implements INetworkTransport {
     }
 
     @Override
-    OutputStream encodeRequest(Request req) {
+    public ByteArrayOutputStream encodeRequest(Request req) {
         ByteArrayOutputStream result_stream = new ByteArrayOutputStream();
         try {
-            RequestSerializer.serialize(req, result_stream, this.serializer);
+            ByteArrayOutputStream object_stream = new ByteArrayOutputStream();
+            SerializerProxy.serialize(req.getData(), object_stream, this.serializer);
+
+            DataOutputStream writer = new DataOutputStream(result_stream);
+            writer.writeShort(object_stream.size());
+            writer.flush();
+            writer.close();
+
+            object_stream.writeTo(result_stream);
         }
         catch (IOException e)
         {
-
+            return null;
         }
+
+        return result_stream;
     }
 
-    @Override
-    public Response createEmptyResponse() {
-        return new BinaryResponse();
+    public Response decodeResponse(InputStream inStream) throws IOException {
+        DataInputStream reader = new DataInputStream(inStream);
+        short size = reader.readShort();
+        ByteArrayInputStream objectStream = new ByteArrayInputStream(reader.readNBytes(size));
+        Object modelObject = SerializerProxy.deserialize(objectStream, this.serializer);
+        if (modelObject instanceof Response)
+            return (Response)modelObject;
+
+        return null;
+    }
+
+    public void encodeResponse(Response response, OutputStream stream) throws IOException {
+        SerializerProxy.serialize(response, stream, this.serializer);
     }
 }

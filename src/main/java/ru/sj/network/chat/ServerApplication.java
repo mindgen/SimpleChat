@@ -18,7 +18,7 @@ public final class ServerApplication {
 
             ServerInstance srv = (ServerInstance)ServerFactory.getServer(ServerType.BinaryTcp);
             srv.setWorkersCount(Runtime.getRuntime().availableProcessors());
-            srv.setBufferCapacity(32); //get protocol message size * 8
+            srv.setBufferCapacity(1024);
             srv.start();
 
         }
