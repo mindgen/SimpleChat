@@ -19,7 +19,8 @@ public final class ServerApplication {
             initContext();
 
             ServerInstance srv = (ServerInstance)ServerFactory.getServer(ServerType.BinaryTcp);
-            srv.setWorkersCount(Runtime.getRuntime().availableProcessors());
+            //srv.setWorkersCount(Runtime.getRuntime().availableProcessors());
+            srv.setWorkersCount(1);
             srv.setAddress(new InetSocketAddress(1234));
             srv.setBufferCapacity(1024);
             srv.start();

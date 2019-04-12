@@ -171,7 +171,7 @@ public class ServerInstance extends ThreadsServer {
             configureSocket(sckChannel);
 
             sckChannel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
-            sckChannel.setOption(StandardSocketOptions.SO_REUSEPORT, true);
+            //sckChannel.setOption(StandardSocketOptions.SO_REUSEPORT, true);
         }
 
         private void configureSocket(AbstractSelectableChannel sck) throws IOException {

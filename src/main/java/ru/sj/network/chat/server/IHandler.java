@@ -8,5 +8,6 @@ import ru.sj.network.chat.transport.Response;
  */
 
 public interface IHandler {
-    Object doRequest(Request request, Response response);
+    void doRequest(Request request, Response response);
+    Class<?> getRequestModelClass();
 }

@@ -15,12 +15,12 @@ public class RequestController {
         this.handlers = new TreeMap<>();
     }
 
-    public void registerHandler(Class<?> model, IHandler handler) {
-        handlers.put(model.getName(), handler);
+    public void registerHandler(IHandler handler) {
+        handlers.put(handler.getRequestModelClass().getName(), handler);
     }
 
-    public void unregisterHandler(Class<?> model) {
-        handlers.remove(model.getName());
+    public void unregisterHandler(IHandler handler) {
+        handlers.remove(handler.getRequestModelClass());
     }
 
     private IHandler getHandler(Class<?> model) {
