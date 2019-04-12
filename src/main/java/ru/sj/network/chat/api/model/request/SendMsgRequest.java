@@ -11,20 +11,23 @@ import java.io.Serializable;
  * Created by Eugene Sinitsyn
  */
 
-public class SendMsgRequest extends StringModel implements Serializable {
+public class SendMsgRequest extends AuthorizedRequest {
     private static final long serialVersionUID = 1L;
+
+    private transient String messageText;
+    public void setMessageText(String value) { this.messageText = value; }
+    public String getMessageText() { return this.messageText; }
 
     private void writeObject(ObjectOutputStream oos)
             throws IOException {
         oos.defaultWriteObject();
-        oos.writeUTF(this.getValue());
+        oos.writeUTF(this.getMessageText());
     }
 
     private void readObject(ObjectInputStream ois)
             throws ClassNotFoundException, IOException {
         ois.defaultReadObject();
-        String val = ois.readUTF();
-        this.setValue(val);
+       this.messageText = ois.readUTF();
     }
 
     @Override

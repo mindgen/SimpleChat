@@ -1,10 +1,9 @@
 package ru.sj.network.chat.server.handlers;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-import ru.sj.network.chat.api.model.request.RegistrationRequest;
-import ru.sj.network.chat.api.model.response.RegistrationResponse;
+import ru.sj.network.chat.api.model.request.ChangeNameRequest;
+import ru.sj.network.chat.api.model.response.ChangeNameResponse;
 import ru.sj.network.chat.server.IHandler;
 import ru.sj.network.chat.server.storage.ChatRoom;
 import ru.sj.network.chat.server.storage.CookieStorage;
@@ -14,8 +13,7 @@ import ru.sj.network.chat.transport.Request;
 import ru.sj.network.chat.transport.Response;
 
 @Component
-public class RegistrationRequestHandler implements IHandler {
-
+public class ChangeNameHandler implements IHandler {
     @Autowired
     ChatRoom chat;
 
@@ -24,23 +22,29 @@ public class RegistrationRequestHandler implements IHandler {
 
     @Override
     public void doRequest(Request request, Response response) {
-        RegistrationRequest regModel = (RegistrationRequest)request.getData();
+        ChangeNameRequest req = (ChangeNameRequest)request.getData();
 
-        User newUser;
-        try {
-            newUser = chat.getUsers().addUser(regModel.getValue());
-        }
-        catch (UserExistException E) {
-            response.setData(RegistrationResponse.createFail());
+        User curUser = cookies.getUserSession(req.getCookie());
+        if (null == curUser) {
+            response.setData(ChangeNameResponse.createUnauthorized());
             return;
         }
 
-        String cookie = cookies.addUserSession(newUser);
-        response.setData(RegistrationResponse.createOK(chat.getMessages().getLast(100), cookie));
+        try {
+            chat.getUsers().changeUserName(curUser, req.getName());
+        }
+        catch (UserExistException E)
+        {
+            response.setData(ChangeNameResponse.createFail());
+            return;
+        }
+
+        response.setData(ChangeNameResponse.createOK());
+        return;
     }
 
     @Override
     public Class<?> getRequestModelClass() {
-        return RegistrationRequest.class;
+        return ChangeNameRequest.class;
     }
 }

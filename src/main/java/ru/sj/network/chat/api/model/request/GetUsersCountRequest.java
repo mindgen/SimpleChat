@@ -9,23 +9,23 @@ import java.io.Serializable;
  * Created by Eugene Sinitsyn
  */
 
-public class GetUsersRequest extends StateModel implements Serializable {
+public class GetUsersCountRequest extends AuthorizedRequest {
     private static final long serialVersionUID = 1L;
+
 
     private void writeObject(ObjectOutputStream oos)
             throws IOException {
         oos.defaultWriteObject();
-        oos.writeInt(this.getLastState());
     }
 
     private void readObject(ObjectInputStream ois)
             throws ClassNotFoundException, IOException {
         ois.defaultReadObject();
-        this.setLastState(ois.readInt());
     }
+
 
     @Override
     public RequestType getType() {
-        return RequestType.GetUsers;
+        return RequestType.GetUsersCount;
     }
 }

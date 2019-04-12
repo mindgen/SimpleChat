@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-public class GetUserResponse extends BaseResponse {
+public class GetMessagesResponse extends BaseResponse {
     private static final long serialVersionUID = 1L;
 
     private void writeObject(ObjectOutputStream oos)

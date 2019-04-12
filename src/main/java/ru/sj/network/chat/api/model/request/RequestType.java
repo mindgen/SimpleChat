@@ -3,7 +3,8 @@ package ru.sj.network.chat.api.model.request;
 public enum RequestType {
     Unknown,
     Registration,
-    GetUsers,
+    GetUsersCount,
     GetMessages,
-    SendMessage
+    SendMessage,
+    ChangeName
 }

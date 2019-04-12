@@ -1,4 +1,4 @@
-package ru.sj.network.chat;
+package ru.sj.chatApp;
 
 import ru.sj.network.chat.client.ChatClient;
 import ru.sj.network.chat.transport.ObjectModelSerializer;
@@ -11,6 +11,7 @@ import java.net.InetSocketAddress;
 public final class ClientApplication {
 
     public static void main(String[] args) {
+
         try {
             ChatClient client = new ChatClient(new BinaryTransport(new ObjectModelSerializer()));
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));

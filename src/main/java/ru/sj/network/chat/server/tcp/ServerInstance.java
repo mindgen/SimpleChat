@@ -1,5 +1,7 @@
 package ru.sj.network.chat.server.tcp;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import ru.sj.network.chat.server.*;
 import ru.sj.network.chat.transport.InvalidProtocolException;
 import ru.sj.network.chat.transport.ObjectModelSerializer;
@@ -30,10 +32,15 @@ public class ServerInstance extends ThreadsServer {
     }
     public int getBufferCapacity() { return mBufferCapacity; }
 
+    private RequestExecutor executor;
+    public ServerInstance(RequestExecutor executor) {
+        this.executor = executor;
+    }
+
     @Override
     protected ServerWorker createWorker()
     {
-        return new TcpServerWorker(this.getAddress(),
+        return new TcpServerWorker(this.executor, this.getAddress(),
                 new SessionsManagerImpl(new BinaryTransport(new ObjectModelSerializer()),
                                         new SessionBufferFactoryImpl()),
                 ByteBuffer.allocate(this.getBufferCapacity()));
@@ -41,16 +48,19 @@ public class ServerInstance extends ThreadsServer {
 
     private class TcpServerWorker extends ServerWorker {
 
+        private RequestExecutor executor;
+
         private ServerSocketChannel mServerSocket;
         private InetSocketAddress mAddress;
         private SessionsManagerImpl mManager;
         private ByteBuffer mBuffer;
 
-        public TcpServerWorker(InetSocketAddress address, SessionsManagerImpl manager,
+        public TcpServerWorker(RequestExecutor executor, InetSocketAddress address, SessionsManagerImpl manager,
                                ByteBuffer Buffer) {
             mAddress = address;
             mManager = manager;
             mBuffer = Buffer;
+            this.executor = executor;
         }
 
         public void run() {
@@ -120,8 +130,8 @@ public class ServerInstance extends ThreadsServer {
             this.getBuffer().clear();
 
             for (Request req: requests) {
-                Response response = ExecutionContext.getInstance().getExecutor().executeCmds(req,
-                        curSession.getManager().getTransport(), ExecutionContext.getInstance().getRequestController());
+                Response response = executor.executeCmds(req,
+                        curSession.getManager().getTransport());
 
                 curSession.storeResponse(response);
                 key.interestOpsOr(SelectionKey.OP_WRITE);

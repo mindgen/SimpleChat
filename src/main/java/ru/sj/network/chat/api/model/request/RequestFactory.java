@@ -5,8 +5,8 @@ public class RequestFactory {
         switch (type) {
             case Registration:
                 return new RegistrationRequest();
-            case GetUsers:
-                return new GetUsersRequest();
+            case GetUsersCount:
+                return new GetUsersCountRequest();
             case GetMessages:
                 return new GetMessagesRequest();
             case SendMessage:

@@ -1,5 +1,7 @@
 package ru.sj.network.chat.server.storage;
 
+import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -14,6 +16,7 @@ import static java.lang.Integer.min;
  * Created by Eugene Sinitsyn
  */
 
+@Component
 public class Messages extends LockedEntity{
     private AtomicInteger curId;
 
@@ -32,7 +35,7 @@ public class Messages extends LockedEntity{
         }
     }
 
-    Message addTextMessage(String user, String text) {
+    public Message addTextMessage(String user, String text) {
         TextMessage newMsg = new TextMessage(user, this.curId.incrementAndGet(), text);
         this.getWriteLock().lock();
         try {
@@ -59,7 +62,17 @@ public class Messages extends LockedEntity{
     public List<Message> getRange(long startTime, int count) {
         this.getReadLock().lock();
         try {
-            return this._getMessage(startTime, count);
+            return this._getMessages(startTime, count);
+        }
+        finally {
+            this.getReadLock().unlock();
+        }
+    }
+
+    public List<Message> getLast(int count) {
+        this.getReadLock().lock();
+        try {
+            return this._getMessages(count);
         }
         finally {
             this.getReadLock().unlock();
@@ -81,11 +94,18 @@ public class Messages extends LockedEntity{
         return this.msgContainer.get(start_idx);
     }
 
-    protected List<Message> _getMessage(long startTime, int count) {
+    protected List<Message> _getMessages(long startTime, int count) {
         int start_idx = Collections.binarySearch(this.msgContainer, new SearchMessage(startTime), (Message m1, Message m2) ->
         {return m2.timestamp > m1.timestamp ? 0 : -1; } );
 
         return this.msgContainer.subList(start_idx, min(start_idx + count, this._count() - 1));
+    }
+
+    protected List<Message> _getMessages(int count) {
+        int startIdx = this.msgContainer.size() - count;
+        int lastIdx = startIdx + count;
+        if (startIdx < 0) startIdx = 0;
+        return this.msgContainer.subList(startIdx, lastIdx);
     }
 
     private ArrayList<Message> msgContainer;

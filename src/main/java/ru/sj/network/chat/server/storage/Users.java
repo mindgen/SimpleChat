@@ -1,11 +1,14 @@
 package ru.sj.network.chat.server.storage;
 
+import org.springframework.stereotype.Component;
+
 import java.util.HashMap;
 
 /**
  * Created by Eugene Sinitsyn
  */
 
+@Component
 public class Users extends LockedEntity {
     public Users(){
         this.users = new HashMap<String, User>();
@@ -36,7 +39,7 @@ public class Users extends LockedEntity {
             return user;
         }
         finally {
-            this.getWriteLock().lock();
+            this.getWriteLock().unlock();
         }
     }
 
@@ -58,7 +61,7 @@ public class Users extends LockedEntity {
            this._removeUser(name);
         }
         finally {
-            this.getWriteLock().lock();
+            this.getWriteLock().unlock();
         }
     }
 
@@ -73,7 +76,7 @@ public class Users extends LockedEntity {
             this.users.put(newName, user);
         }
         finally {
-            this.getWriteLock().lock();
+            this.getWriteLock().unlock();
         }
     }
 
