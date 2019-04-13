@@ -11,6 +11,8 @@ public class RequestFactory {
                 return new GetMessagesRequest();
             case SendMessage:
                 return new SendMsgRequest();
+            case ChangeName:
+                return new ChangeNameRequest();
              default:
                  return null;
         }

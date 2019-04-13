@@ -7,5 +7,5 @@ public interface IChatEvents {
     void OnRegistration(boolean success);
     void OnChangeName(boolean success);
 
-    void OnGetUsersCount(int count);
+    void OnSendMessage(boolean success);
 }

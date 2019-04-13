@@ -89,8 +89,9 @@ public class SessionImpl implements ISession {
                 return false;
             }
 
+            stream.reset();
             transport.encodeResponse(response, stream);
-            buffer = ByteBuffer.wrap(stream.getData());
+            buffer = ByteBuffer.wrap(stream.getData(), 0, stream.size());
 
             return true;
         }

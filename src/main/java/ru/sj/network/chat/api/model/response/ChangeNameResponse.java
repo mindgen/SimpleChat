@@ -27,7 +27,7 @@ public class ChangeNameResponse extends BaseResponse {
         ois.defaultReadObject();
     }
 
-    public static RegistrationResponse createUnauthorized() { return new RegistrationResponse(StatusCode.Unauthorized); }
-    public static RegistrationResponse createFail() { return new RegistrationResponse(StatusCode.Error); }
-    public static RegistrationResponse createOK() { return new RegistrationResponse(StatusCode.OK); }
+    public static ChangeNameResponse createUnauthorized() { return new ChangeNameResponse(StatusCode.Unauthorized); }
+    public static ChangeNameResponse createFail() { return new ChangeNameResponse(StatusCode.Error); }
+    public static ChangeNameResponse createOK() { return new ChangeNameResponse(StatusCode.OK); }
 }

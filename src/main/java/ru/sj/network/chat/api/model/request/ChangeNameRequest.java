@@ -14,14 +14,4 @@ public class ChangeNameRequest extends AuthorizedRequest {
     private String newName;
     public void setName(String userName) { this.newName = userName;}
     public String getName() { return this.newName; }
-
-    private void writeObject(ObjectOutputStream oos)
-            throws IOException {
-        oos.defaultWriteObject();
-    }
-
-    private void readObject(ObjectInputStream ois)
-            throws ClassNotFoundException, IOException {
-        ois.defaultReadObject();
-    }
 }

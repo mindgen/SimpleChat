@@ -1,7 +1,6 @@
 package ru.sj.network.chat.api.model.response;
 
 import ru.sj.network.chat.api.model.MessageModel;
-import ru.sj.network.chat.api.model.TextMessageModel;
 import ru.sj.network.chat.api.model.util.CollectionUtil;
 import ru.sj.network.chat.server.storage.Message;
 

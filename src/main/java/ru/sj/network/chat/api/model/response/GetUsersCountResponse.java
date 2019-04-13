@@ -36,6 +36,8 @@ public class GetUsersCountResponse extends BaseResponse {
         }
     }
 
+    public int getCount() { return this.count; }
+
     public static GetUsersCountResponse createUnauthorized() { return new GetUsersCountResponse(StatusCode.Unauthorized); }
     public static GetUsersCountResponse createOK(int count) { return new GetUsersCountResponse(count); }
 }
