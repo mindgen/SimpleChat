@@ -35,7 +35,7 @@ public class Messages extends LockedEntity{
         }
     }
 
-    public Message addTextMessage(String user, String text) {
+    public TextMessage addTextMessage(String user, String text) {
         TextMessage newMsg = new TextMessage(user, this.curId.incrementAndGet(), text);
         this.getWriteLock().lock();
         try {

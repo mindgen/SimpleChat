@@ -1,14 +1,13 @@
 package ru.sj.network.chat.server.handlers;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import ru.sj.network.chat.api.model.request.SendMsgRequest;
-import ru.sj.network.chat.api.model.response.GetUsersCountResponse;
 import ru.sj.network.chat.api.model.response.SendMsgResponse;
+import ru.sj.network.chat.server.ChatManager;
 import ru.sj.network.chat.server.IHandler;
+import ru.sj.network.chat.server.UnauthorizedAccess;
 import ru.sj.network.chat.server.storage.ChatRoom;
-import ru.sj.network.chat.server.storage.CookieStorage;
 import ru.sj.network.chat.server.storage.User;
 import ru.sj.network.chat.transport.Request;
 import ru.sj.network.chat.transport.Response;
@@ -17,22 +16,20 @@ import ru.sj.network.chat.transport.Response;
 public class SendMsgRequestHandler implements IHandler {
 
     @Autowired
-    ChatRoom chat;
-
-    @Autowired
-    CookieStorage cookies;
+    ChatManager manager;
 
     @Override
     public void doRequest(Request request, Response response) {
         SendMsgRequest msgReq = (SendMsgRequest)request.getData();
 
-        User curUser = cookies.getUserSession(msgReq.getCookie());
-        if (null == curUser) {
+        try {
+            manager.sendMessage(request.getSession(), msgReq.getMessageText());
+        }
+        catch (UnauthorizedAccess E) {
             response.setData(SendMsgResponse.createUnauthorized());
             return;
         }
 
-        chat.getMessages().addTextMessage(curUser.getName(), msgReq.getMessageText());
         response.setData(SendMsgResponse.createOK());
     }
 

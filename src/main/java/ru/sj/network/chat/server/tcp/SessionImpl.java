@@ -1,5 +1,6 @@
 package ru.sj.network.chat.server.tcp;
 
+import ru.sj.network.chat.api.model.response.RealTimeResponse;
 import ru.sj.network.chat.server.ISession;
 import ru.sj.network.chat.server.ISessionId;
 import ru.sj.network.chat.server.ISessionsManager;
@@ -8,8 +9,9 @@ import ru.sj.network.chat.transport.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collection;
+import java.nio.channels.SelectionKey;
 import java.util.Queue;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Created by Eugene Sinitsyn
@@ -19,16 +21,27 @@ public class SessionImpl implements ISession {
 
     SessionIdImp mId;
     ISessionsManager mManager;
-    IRequestBuffer sessionBuffer;
+    IRequestBuffer reqBuffer;
     Queue<Response> responseStorage;
     BufferedResponseWriter buffWriter;
 
-    public SessionImpl(ISessionsManager manager, IRequestBuffer buffer, Queue<Response> responseStorage) {
-        mId = SessionIdImp.generateNew();
-        mManager = manager;
-        sessionBuffer = buffer;
+    Queue<Response> realTimeResponseStorage;
+    ReentrantLock realTimeStorageLock;
+
+    SelectionKey selKey;
+
+    public SessionImpl(ISessionsManager manager, IRequestBuffer buffer,
+                       Queue<Response> responseStorage, Queue<Response> realTimeResponseStorage,
+                       SelectionKey selKey) {
+        this.mId = SessionIdImp.generateNew();
+        this.mManager = manager;
+        this.reqBuffer = buffer;
         this.responseStorage = responseStorage;
-        buffWriter = new BufferedResponseWriter();
+        this.selKey = selKey;
+        this.buffWriter = new BufferedResponseWriter();
+
+        this.realTimeResponseStorage = realTimeResponseStorage;
+        realTimeStorageLock = new ReentrantLock();
     }
 
     @Override
@@ -47,19 +60,37 @@ public class SessionImpl implements ISession {
     }
 
     @Override
-    public Collection<Request> readData(ByteBuffer buffer) throws InvalidProtocolException {
-        Collection<Request> requests = this.getManager().getTransport().decodeRequest(buffer, sessionBuffer);
-
-        return requests;
+    public Request readData(ByteBuffer buffer) throws InvalidProtocolException {
+        Request req = this.getManager().getTransport().decodeRequest(buffer, this);
+        return req;
     }
 
     @Override
-    public void storeResponse(Response response) { responseStorage.add(response); }
+    public void storeResponse(Response response) { responseStorage.add(response); setNeedWriteToSocket(true); }
+
+    @Override
+    public void storeRealTimeResponse(RealTimeResponse responseModel) {
+        realTimeStorageLock.lock();
+        Response newResponse = getManager().getTransport().createEmptyResponse();
+        newResponse.setData(responseModel);
+        this.realTimeResponseStorage.add(newResponse);
+        setNeedWriteToSocket(true);
+        realTimeStorageLock.unlock();
+    }
 
     @Override
     public void updateWriteBuffer() throws IOException {
         if (buffWriter.writeResponse(responseStorage.peek(), this.getManager().getTransport())) {
             responseStorage.remove();
+        }
+        else {
+            realTimeStorageLock.lock();
+            if (buffWriter.writeResponse(realTimeResponseStorage.peek(), this.getManager().getTransport())) {
+                realTimeResponseStorage.remove();
+            } else {
+                setNeedWriteToSocket(false);
+            }
+            realTimeStorageLock.unlock();
         }
     }
 
@@ -68,8 +99,24 @@ public class SessionImpl implements ISession {
         return buffWriter.getBuffer();
     }
 
+    @Override
+    public IRequestBuffer getRequestBuffer() {
+        return this.reqBuffer;
+    }
+
     void freeResources() {
         responseStorage.clear();
+        this.selKey = null;
+    }
+
+    private void setNeedWriteToSocket(boolean needWrite) {
+        try {
+            if (needWrite)
+                this.selKey.interestOpsOr(SelectionKey.OP_WRITE);
+            else
+                this.selKey.interestOpsAnd(~SelectionKey.OP_WRITE);
+        }
+        catch (Exception E) {}
     }
 
     class BufferedResponseWriter {

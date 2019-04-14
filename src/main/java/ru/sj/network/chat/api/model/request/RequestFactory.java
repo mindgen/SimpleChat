@@ -7,8 +7,6 @@ public class RequestFactory {
                 return new RegistrationRequest();
             case GetUsersCount:
                 return new GetUsersCountRequest();
-            case GetMessages:
-                return new GetMessagesRequest();
             case SendMessage:
                 return new SendMsgRequest();
             case ChangeName:

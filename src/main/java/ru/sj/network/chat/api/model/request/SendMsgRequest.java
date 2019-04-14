@@ -11,7 +11,7 @@ import java.io.Serializable;
  * Created by Eugene Sinitsyn
  */
 
-public class SendMsgRequest extends AuthorizedRequest {
+public class SendMsgRequest extends RequestBase {
     private static final long serialVersionUID = 1L;
 
     private transient String messageText;

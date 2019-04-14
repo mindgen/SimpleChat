@@ -9,7 +9,7 @@ import java.io.Serializable;
  * Created by Eugene Sinitsyn
  */
 
-public class GetUsersCountRequest extends AuthorizedRequest {
+public class GetUsersCountRequest extends RequestBase {
     private static final long serialVersionUID = 1L;
 
 

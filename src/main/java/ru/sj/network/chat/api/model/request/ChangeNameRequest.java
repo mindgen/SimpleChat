@@ -5,7 +5,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
-public class ChangeNameRequest extends AuthorizedRequest {
+public class ChangeNameRequest extends RequestBase {
     @Override
     public RequestType getType() {
         return RequestType.ChangeName;

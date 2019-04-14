@@ -1,6 +1,9 @@
 package ru.sj.chatApp;
 
+import org.w3c.dom.Text;
 import ru.sj.chatApp.IChatCommand;
+import ru.sj.network.chat.api.model.MessageModel;
+import ru.sj.network.chat.api.model.TextMessageModel;
 import ru.sj.network.chat.client.ChatClient;
 import ru.sj.network.chat.client.IChatEvents;
 import ru.sj.network.chat.transport.ObjectModelSerializer;
@@ -10,6 +13,7 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.TreeMap;
 
 public final class ClientApplication implements IChatEvents {
@@ -31,6 +35,7 @@ public final class ClientApplication implements IChatEvents {
         addCmd(new SendMessageCommand(this));
         addCmd(new HelpCommand(this));
         addCmd(new ExitCommand(this));
+        addCmd(new GetNewMessagesCommand(this));
     }
 
     private void addCmd(IChatCommand cmd) {
@@ -72,7 +77,14 @@ public final class ClientApplication implements IChatEvents {
 
             while (!client.isRegistered()) {
                 doEnterName();
-                client.registration(this.userName);
+                List<MessageModel> messages = client.registration(this.userName);
+                if (null != messages) {
+                    messages.forEach((msg) -> {
+                        try {
+                            writeMessage(msg);
+                        } catch (Exception E){}
+                    });
+                }
             }
 
             doCommandLoop();
@@ -88,6 +100,7 @@ public final class ClientApplication implements IChatEvents {
     private void doCommandLoop() throws IOException {
         try {
             while (isAlive()) {
+                write("Enter command:");
                 String cmdValue = readLine();
                 if (!doExecuteCommand(cmdValue)) doIncorectCommand();
             }
@@ -110,6 +123,13 @@ public final class ClientApplication implements IChatEvents {
     void write(String value) throws  IOException {
         this.getWriter().write(value);
         this.getWriter().flush();
+    }
+
+    private void writeMessage(MessageModel msg) throws IOException {
+        if (null != msg && (msg instanceof TextMessageModel)) {
+            TextMessageModel txtMsg = (TextMessageModel)msg;
+            writeLine(String.format("'%s': %s", txtMsg.getUserName(), txtMsg.getText()));
+        }
     }
 
     private String readLine() throws IOException {
@@ -170,6 +190,7 @@ public final class ClientApplication implements IChatEvents {
     public void OnDisconnect() {
         try {
             writeLine("Disconnected");
+            this.exit();
         }
         catch (Exception e) { }
     }
@@ -179,7 +200,6 @@ public final class ClientApplication implements IChatEvents {
         try {
             if (success) {
                 writeLine("Registration is done");
-                writeLine("Enter command:");
             }
             else {
                 writeLine("Registration fail. Enter another name");
@@ -203,5 +223,13 @@ public final class ClientApplication implements IChatEvents {
     @Override
     public void OnSendMessage(boolean success) {
 
+    }
+
+    @Override
+    public void OnNewMessage(MessageModel msg) {
+        try {
+            writeMessage(msg);
+        }
+        catch (Exception E) {}
     }
 }

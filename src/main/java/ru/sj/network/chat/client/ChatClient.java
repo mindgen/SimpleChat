@@ -1,5 +1,6 @@
 package ru.sj.network.chat.client;
 
+import ru.sj.network.chat.api.model.MessageModel;
 import ru.sj.network.chat.api.model.request.*;
 import ru.sj.network.chat.api.model.response.*;
 import ru.sj.network.chat.transport.INetworkTransport;
@@ -11,6 +12,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.List;
 
 public final class ChatClient implements Closeable {
 
@@ -52,7 +54,7 @@ public final class ChatClient implements Closeable {
     public boolean isRegistered() { return this.userName != null; }
     public String getUserName() { return this.userName; }
 
-    public boolean registration(String userName) throws IOException {
+    public List<MessageModel> registration(String userName) throws IOException {
         RegistrationRequest req = (RegistrationRequest)RequestFactory.createRequest(RequestType.Registration);
         req.setName(userName);
 
@@ -61,20 +63,18 @@ public final class ChatClient implements Closeable {
             RegistrationResponse regResponse = (RegistrationResponse)response.getData();
             boolean isSuccess = regResponse.getCode() == StatusCode.OK;
             if (isSuccess) {
-                this.cookie = regResponse.getCookie();
                 this.userName = userName;
             }
             events.OnRegistration(isSuccess);
-            return isSuccess;
+            return regResponse.getMessages();
         }
 
-        return false;
+        return null;
     }
 
     public boolean changeName(String newName) throws IOException {
         ChangeNameRequest req = (ChangeNameRequest) RequestFactory.createRequest(RequestType.ChangeName);
         req.setName(newName);
-        req.setCookie(cookie);
 
         Response response = this.doRequest(this.createRequest(req));
         if (response.getData() instanceof ChangeNameResponse) {
@@ -93,7 +93,6 @@ public final class ChatClient implements Closeable {
 
     public int getUsersCount() throws IOException {
         GetUsersCountRequest req = (GetUsersCountRequest)RequestFactory.createRequest(RequestType.GetUsersCount);
-        req.setCookie(cookie);
 
         Response response = this.doRequest(this.createRequest(req));
         if (response.getData() instanceof GetUsersCountResponse) {
@@ -106,7 +105,6 @@ public final class ChatClient implements Closeable {
 
     public boolean sendMessage(String text) throws IOException {
         SendMsgRequest req = (SendMsgRequest)RequestFactory.createRequest(RequestType.SendMessage);
-        req.setCookie(cookie);
         req.setMessageText(text);
 
         Response response = this.doRequest(this.createRequest(req));
@@ -121,11 +119,51 @@ public final class ChatClient implements Closeable {
         return false;
     }
 
+    public void readMessages() throws IOException {
+        while (true) {
+            Response response = getRealTimeResponse();
+            if (null == response) break;
+            tryParseNewMessage((BaseResponse) response.getData());
+        }
+    }
+
+    public boolean tryParseNewMessage(BaseResponse responseModel) {
+        if (responseModel instanceof RealTimeResponse) {
+            if (responseModel instanceof NewMessageResponse) {
+                NewMessageResponse newMsgResponse = (NewMessageResponse)responseModel;
+                events.OnNewMessage(newMsgResponse.getMessage());
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private synchronized Response getRealTimeResponse() throws IOException {
+        try {
+            if (this.client_socket.getInputStream().available() > 0) {
+                return this.transport.decodeResponse(this.client_socket.getInputStream());
+            }
+        } catch (Exception E) {
+            close();
+            throw E;
+        }
+
+        return null;
+    }
+
     private synchronized Response doRequest(Request request) throws IOException {
         try {
             ByteArrayOutputStream dataStream = this.transport.encodeRequest(request);
             dataStream.writeTo(this.client_socket.getOutputStream());
-            return this.transport.decodeResponse(this.client_socket.getInputStream());
+            while(true) {
+                Response response = this.transport.decodeResponse(this.client_socket.getInputStream());
+                if (null != response) {
+                    if (!tryParseNewMessage((BaseResponse) response.getData()))
+                        return response;
+                }
+            }
         }
         catch (Exception e) {
             close();
@@ -134,6 +172,6 @@ public final class ChatClient implements Closeable {
     }
 
     private Request createRequest(RequestBase model) {
-        return this.transport.createRequest(model);
+        return this.transport.createRequest(model, null);
     }
 }

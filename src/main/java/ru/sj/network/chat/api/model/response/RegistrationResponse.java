@@ -14,23 +14,18 @@ public class RegistrationResponse extends BaseResponse {
     private static final long serialVersionUID = 1L;
 
     private transient List<MessageModel> msgList;
-    private transient String cookie;
 
     RegistrationResponse(StatusCode code) { this.setCode(code); }
-    RegistrationResponse(List<Message> messages, String cookie) {
-        this.cookie = cookie;
+    RegistrationResponse(List<Message> messages) {
         this.setCode(StatusCode.OK);
         this.msgList = new ArrayList<>();
         CollectionUtil.copyStorageMessageToModel(messages, this.msgList);
     }
 
-    public String getCookie() { return this.cookie; }
-
     private void writeObject(ObjectOutputStream oos)
             throws IOException {
         oos.defaultWriteObject();
         if (StatusCode.OK == this.getCode()) {
-            oos.writeObject(this.cookie);
             oos.writeObject(this.msgList);
         }
     }
@@ -39,11 +34,12 @@ public class RegistrationResponse extends BaseResponse {
             throws ClassNotFoundException, IOException {
         ois.defaultReadObject();
         if (StatusCode.OK == this.getCode()) {
-            this.cookie = (String)ois.readObject();
             this.msgList = (List<MessageModel>)(ois.readObject());
         }
     }
 
+    public List<MessageModel> getMessages() { return this.msgList; }
+
     public static RegistrationResponse createFail() { return new RegistrationResponse(StatusCode.Error); }
-    public static RegistrationResponse createOK(List<Message> messages, String cookie) { return new RegistrationResponse(messages, cookie); }
+    public static RegistrationResponse createOK(List<Message> messages) { return new RegistrationResponse(messages); }
 }

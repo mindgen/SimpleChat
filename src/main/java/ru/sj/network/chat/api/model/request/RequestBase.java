@@ -2,6 +2,8 @@ package ru.sj.network.chat.api.model.request;
 
 import ru.sj.network.chat.transport.Request;
 
-public abstract class RequestBase {
+import java.io.Serializable;
+
+public abstract class RequestBase implements Serializable {
     public abstract RequestType getType();
 }

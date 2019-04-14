@@ -16,6 +16,10 @@ public class RequestExecutor {
     @Autowired
     RequestController controller;
 
+    @Autowired
+    ChatManager manager;
+
+
     public Response executeCmds(Request request,
                                      INetworkTransport transport) {
         Response response = transport.createEmptyResponse();
@@ -23,4 +27,6 @@ public class RequestExecutor {
 
         return response;
     }
+
+    public ChatManager getManager() { return this.manager; }
 }

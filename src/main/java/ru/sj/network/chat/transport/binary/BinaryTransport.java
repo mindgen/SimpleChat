@@ -2,15 +2,12 @@ package ru.sj.network.chat.transport.binary;
 
 import ru.sj.network.chat.api.model.request.RequestBase;
 import ru.sj.network.chat.api.model.response.BaseResponse;
+import ru.sj.network.chat.server.ISession;
 import ru.sj.network.chat.transport.*;
 
 import java.io.*;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Created by Eugene Sinitsyn
@@ -29,15 +26,16 @@ public class BinaryTransport implements INetworkTransport {
     }
 
     @Override
-    public Request createRequest(RequestBase requestData) {
-        return new BinaryRequest(requestData);
+    public Request createRequest(RequestBase requestData, ISession session) {
+        return new BinaryRequest(requestData, session);
     }
 
     @Override
-    public Collection<Request> decodeRequest(ByteBuffer buffer, IRequestBuffer msgBuffer) throws InvalidProtocolException {
-        List<Request> resultMessages = new ArrayList<Request>();
+    public Request decodeRequest(ByteBuffer buffer, ISession session) throws InvalidProtocolException {
+        IRequestBuffer msgBuffer = session.getRequestBuffer();
         msgBuffer.writeToBuffer(buffer);
         msgBuffer.flip();
+        Request resultReq = null;
         try {
             while (true) {
                 msgBuffer.mark();
@@ -47,7 +45,7 @@ public class BinaryTransport implements INetworkTransport {
                     msgBuffer.array(msgPayload);
                     Object objectData = SerializerProxy.deserialize(msgPayload, this.serializer);
                     if (null != objectData) {
-                        resultMessages.add(this.createRequest((RequestBase)objectData));
+                        resultReq = this.createRequest((RequestBase)objectData, session);
                     }
                     else {
                         throw new InvalidProtocolException();
@@ -63,7 +61,7 @@ public class BinaryTransport implements INetworkTransport {
             msgBuffer.reset();
         }
         msgBuffer.compact();
-        return Collections.unmodifiableCollection(resultMessages);
+        return resultReq;
     }
 
     @Override

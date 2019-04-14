@@ -11,4 +11,6 @@ public class TextMessageModel extends MessageModel {
         this.userName = user;
         this.message = message;
     }
+
+    public String getText() { return this.message; }
 }

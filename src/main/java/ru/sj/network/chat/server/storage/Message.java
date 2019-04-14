@@ -13,7 +13,7 @@ public abstract class Message {
         this.init(null, 0);
     }
 
-    Message(String chatuser, int id) {
+    Message(String chatUser, int id) {
         this.init(chatUser, id);
     }
 

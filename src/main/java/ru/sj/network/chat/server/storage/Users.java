@@ -9,7 +9,7 @@ import java.util.HashMap;
  */
 
 @Component
-public class Users extends LockedEntity {
+public class Users extends LockedEntity  {
     public Users(){
         this.users = new HashMap<String, User>();
     }

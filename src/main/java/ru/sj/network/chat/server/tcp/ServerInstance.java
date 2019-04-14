@@ -61,6 +61,7 @@ public class ServerInstance extends ThreadsServer {
             mManager = manager;
             mBuffer = Buffer;
             this.executor = executor;
+            this.mManager.setEventsHandler(this.executor.getManager());
         }
 
         public void run() {
@@ -110,7 +111,7 @@ public class ServerInstance extends ThreadsServer {
             SocketChannel newChannel = ((ServerSocketChannel)key.channel()).accept();
             configureSocket(newChannel);
             SelectionKey regKey = newChannel.register(key.selector(), SelectionKey.OP_READ);
-            regKey.attach(mManager.openSession());
+            regKey.attach(mManager.openSession(regKey));
         }
 
         private void readData(SelectionKey key) throws IOException, InvalidProtocolException {
@@ -126,15 +127,14 @@ public class ServerInstance extends ThreadsServer {
             bytesRead = curSocket.read(this.getBuffer());
 
             this.getBuffer().flip();
-            Collection<Request> requests = curSession.readData(this.getBuffer());
+            Request request = curSession.readData(this.getBuffer());
             this.getBuffer().clear();
 
-            for (Request req: requests) {
-                Response response = executor.executeCmds(req,
+            if (null != request) {
+                Response response = executor.executeCmds(request,
                         curSession.getManager().getTransport());
 
                 curSession.storeResponse(response);
-                key.interestOpsOr(SelectionKey.OP_WRITE);
             }
 
             if (bytesRead < 0) {
@@ -153,7 +153,6 @@ public class ServerInstance extends ThreadsServer {
                 return;
             }
 
-            key.interestOpsAnd(~SelectionKey.OP_WRITE);
             while (true)
             {
                 curSession.updateWriteBuffer();
@@ -161,7 +160,6 @@ public class ServerInstance extends ThreadsServer {
 
                 curSession.getWriteBuffer().compact();
                 if (curSession.getWriteBuffer().position() > 0) {
-                    key.interestOpsAnd(SelectionKey.OP_WRITE);
                     break;
                 } else if (0 == wCnt) break;
             }

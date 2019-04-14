@@ -9,7 +9,7 @@ import java.io.Serializable;
  * Created by Eugene Sinitsyn
  */
 
-public class RegistrationRequest extends StringModel implements Serializable  {
+public class RegistrationRequest extends StringModel {
     private static final long serialVersionUID = 1L;
 
     public void setName(String userName) { this.setValue(userName);}

@@ -1,6 +1,7 @@
 package ru.sj.network.chat.transport;
 
 import ru.sj.network.chat.api.model.request.RequestBase;
+import ru.sj.network.chat.server.ISession;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -14,12 +15,12 @@ import java.util.Collection;
  */
 
 public interface INetworkTransport {
-    Collection<Request> decodeRequest(ByteBuffer buffer, IRequestBuffer msgBuffer) throws InvalidProtocolException;
+    Request decodeRequest(ByteBuffer buffer, ISession session) throws InvalidProtocolException;
     ByteArrayOutputStream encodeRequest(Request req);
 
     Response decodeResponse(InputStream inStream) throws IOException;
     void encodeResponse(Response response, OutputStream stream) throws IOException;
 
     Response createEmptyResponse();
-    Request createRequest(RequestBase requestData);
+    Request createRequest(RequestBase requestData, ISession session);
 }

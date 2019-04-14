@@ -13,4 +13,6 @@ public abstract class LockedEntity {
 
     protected Lock getReadLock() { return this.lock.readLock(); }
     protected Lock getWriteLock() { return this.lock.writeLock(); }
+
+    public ReadWriteLock getLocker() { return this.lock; }
 }
