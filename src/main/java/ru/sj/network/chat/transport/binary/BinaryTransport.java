@@ -40,6 +40,7 @@ public class BinaryTransport implements INetworkTransport {
             while (true) {
                 msgBuffer.mark();
                 short msgLen = msgBuffer.getShort();
+                if (msgLen > maxRequestSize) throw new InvalidProtocolException();
                 if (msgBuffer.remaining() >= msgLen) {
                     byte[] msgPayload = new byte[msgLen];
                     msgBuffer.array(msgPayload);
@@ -111,4 +112,6 @@ public class BinaryTransport implements INetworkTransport {
 
         object_stream.writeTo(stream);
     }
+
+    private final int maxRequestSize = 1024 * 3; // 1MB
 }

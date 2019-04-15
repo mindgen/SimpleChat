@@ -20,6 +20,7 @@ public abstract class ThreadsServer extends BaseServer {
         try {
             for (int num = 0; num < this.getWorkersCount(); ++num) {
                 ServerWorker wrk = createWorker();
+                wrk.setServer(this);
                 mWorkerThreads[num] = new WorkerThread(wrk, String.format("%s_%d", wrk.getName(), num));
             }
         }
@@ -36,11 +37,18 @@ public abstract class ThreadsServer extends BaseServer {
 
     @Override
     public void doStop() throws Exception {
-        for (Thread wrkThread : mWorkerThreads) {
-            wrkThread.interrupt();
+        for (WorkerThread wrkThread : mWorkerThreads) {
+            if (wrkThread.isAlive())
+                wrkThread.interrupt();
         }
-        for (Thread wrkThread : mWorkerThreads) {
-            wrkThread.join();
+        for (WorkerThread wrkThread : mWorkerThreads) {
+            if (!wrkThread.isInterrupted())
+                wrkThread.join();
+            ServerWorker wrk = (ServerWorker)wrkThread.getRunnable();
+            if (null != wrk.getStoredException()) {
+                wrk.getStoredException().printStackTrace();
+                wrk.setStoredException(null);
+            }
         }
         mWorkerThreads = null;
     }

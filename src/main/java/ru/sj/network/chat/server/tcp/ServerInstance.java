@@ -72,9 +72,12 @@ public class ServerInstance extends ThreadsServer {
             }
             catch (IOException e)
             {
-                e.printStackTrace();
-                // TO-DO
-                // Inform main thread about this
+               this.setStoredException(e);
+               try {
+                this.getServer().stop();
+               }
+               catch (InterruptedException Ex) {}
+               catch (Exception Ex) { System.exit(100); }
             }
         }
 
@@ -179,7 +182,8 @@ public class ServerInstance extends ThreadsServer {
             configureSocket(sckChannel);
 
             sckChannel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
-            //sckChannel.setOption(StandardSocketOptions.SO_REUSEPORT, true);
+            if (sckChannel.supportedOptions().contains(StandardSocketOptions.SO_REUSEPORT))
+                sckChannel.setOption(StandardSocketOptions.SO_REUSEPORT, true);
         }
 
         private void configureSocket(AbstractSelectableChannel sck) throws IOException {

@@ -1,5 +1,7 @@
 package ru.sj.network.chat.server.handlers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.sj.network.chat.api.model.request.RegistrationRequest;
@@ -19,9 +21,13 @@ public class RegistrationRequestHandler implements IHandler {
     @Autowired
     ChatManager manager;
 
+    private final Logger logger = LoggerFactory.getLogger(RegistrationRequestHandler.class);
+
     @Override
     public void doRequest(Request request, Response response) {
         RegistrationRequest regModel = (RegistrationRequest)request.getData();
+
+        logger.info("Registration request, session id - '{}'", request.getSession().getId().toString());
 
         List<Message> lastMsgs;
         try {

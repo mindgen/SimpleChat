@@ -11,7 +11,7 @@ public abstract class BaseServer implements IServer {
     boolean mRunning = false;
 
     @Override
-    public void start() throws Exception
+    public synchronized void start() throws Exception
     {
         throwIfStarted();
         try {
@@ -25,14 +25,15 @@ public abstract class BaseServer implements IServer {
         }
     }
     @Override
-    public void stop() throws Exception
+    public synchronized void stop() throws Exception
     {
+        if (!mRunning) return;
         mRunning = false;
         doStop();
     }
 
     @Override
-    public boolean isRunning() {return mRunning; }
+    public synchronized boolean isRunning() {return mRunning; }
 
     abstract protected void doStart() throws Exception;
     abstract protected void doStop() throws Exception;
@@ -40,12 +41,12 @@ public abstract class BaseServer implements IServer {
 
     private InetSocketAddress mAddress;
     @Override
-    public void setAddress(InetSocketAddress address) throws AlreadyStartedException {
+    public synchronized void setAddress(InetSocketAddress address) throws AlreadyStartedException {
         throwIfStarted();
         mAddress = address;
     }
     @Override
-    public InetSocketAddress getAddress() { return mAddress; }
+    public synchronized InetSocketAddress getAddress() { return mAddress; }
 
     protected void throwIfStarted() throws AlreadyStartedException {
         if (this.isRunning()) throw new AlreadyStartedException();

@@ -71,11 +71,15 @@ public class SessionImpl implements ISession {
     @Override
     public void storeRealTimeResponse(RealTimeResponse responseModel) {
         realTimeStorageLock.lock();
-        Response newResponse = getManager().getTransport().createEmptyResponse();
-        newResponse.setData(responseModel);
-        this.realTimeResponseStorage.add(newResponse);
-        setNeedWriteToSocket(true);
-        realTimeStorageLock.unlock();
+        try {
+            Response newResponse = getManager().getTransport().createEmptyResponse();
+            newResponse.setData(responseModel);
+            this.realTimeResponseStorage.add(newResponse);
+            setNeedWriteToSocket(true);
+        }
+        finally {
+            realTimeStorageLock.unlock();
+        }
     }
 
     @Override
@@ -106,15 +110,19 @@ public class SessionImpl implements ISession {
 
     void freeResources() {
         responseStorage.clear();
+        realTimeStorageLock.lock();
         this.selKey = null;
+        realTimeStorageLock.unlock();
     }
 
     private void setNeedWriteToSocket(boolean needWrite) {
         try {
-            if (needWrite)
-                this.selKey.interestOpsOr(SelectionKey.OP_WRITE);
-            else
-                this.selKey.interestOpsAnd(~SelectionKey.OP_WRITE);
+            if (null != this.selKey) {
+                if (needWrite)
+                    this.selKey.interestOpsOr(SelectionKey.OP_WRITE);
+                else
+                    this.selKey.interestOpsAnd(~SelectionKey.OP_WRITE);
+            }
         }
         catch (Exception E) {}
     }

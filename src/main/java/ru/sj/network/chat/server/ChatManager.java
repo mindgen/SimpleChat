@@ -27,11 +27,15 @@ public class ChatManager implements ISessionsManagerEvents {
     public List<Message> registerUser(ISession session, String name) throws UserExistException {
         User newUser = chat.getUsers().addUser(name);
 
+        List<Message> lastMessages = null;
         chat.getMessages().getLocker().readLock().lock();
-        _store(session, newUser);
-
-        List<Message> lastMessages = chat.getMessages().getLast(100);
-        chat.getMessages().getLocker().readLock().unlock();
+        try {
+            _store(session, newUser);
+            lastMessages = chat.getMessages().getLast(100);
+        }
+        finally {
+            chat.getMessages().getLocker().readLock().unlock();
+        }
 
         return lastMessages;
     }
@@ -51,9 +55,14 @@ public class ChatManager implements ISessionsManagerEvents {
     public void sendMessage(ISession session, String message) throws UnauthorizedAccess {
         User curUser = _checkAccess(session);
 
+        TextMessage chatMessage = null;
         chat.getMessages().getLocker().writeLock().lock();
-        TextMessage chatMessage = chat.getMessages().addTextMessage(curUser.getName(), message);
-        chat.getMessages().getLocker().writeLock().unlock();
+        try {
+            chatMessage = chat.getMessages().addTextMessage(curUser.getName(), message);
+        }
+        finally {
+            chat.getMessages().getLocker().writeLock().unlock();
+        }
 
         sendToAll(chatMessage);
     }
@@ -68,32 +77,50 @@ public class ChatManager implements ISessionsManagerEvents {
 
     private void sendToAll(TextMessage msg) {
         NewMessageResponse response = NewMessageResponse.createOK(msg.getUser(), msg.getMessage());
+
         stateLock.readLock().lock();
-        mapping.forEach((session, user) -> {
-            if (msg.getUser().compareTo(user.getName()) != 0) {
-                session.storeRealTimeResponse(response);
-            }
-        });
-        stateLock.readLock().unlock();
+        try {
+            mapping.forEach((session, user) -> {
+                if (msg.getUser().compareTo(user.getName()) != 0) {
+                    session.storeRealTimeResponse(response);
+                }
+            });
+        }
+        finally {
+            stateLock.readLock().unlock();
+        }
     }
 
     // Internal functions
     private void _store(ISession session, User user) {
         stateLock.writeLock().lock();
-        mapping.put(session, user);
-        stateLock.writeLock().unlock();
+        try {
+            mapping.put(session, user);
+        }
+        finally {
+            stateLock.writeLock().unlock();
+        }
     }
 
     private void _extract(ISession session) {
         stateLock.writeLock().lock();
-        mapping.remove(session);
-        stateLock.writeLock().unlock();
+        try {
+            mapping.remove(session);
+        }
+        finally {
+            stateLock.writeLock().unlock();
+        }
     }
 
     private User _find(ISession session) {
+        User user = null;
         stateLock.readLock().lock();
-        User user = mapping.get(session);
-        stateLock.readLock().unlock();
+        try {
+             user = mapping.get(session);
+        }
+        finally {
+            stateLock.readLock().unlock();
+        }
 
         return user;
     }
@@ -112,6 +139,9 @@ public class ChatManager implements ISessionsManagerEvents {
 
     @Override
     public void onCloseSession(ISession session) {
-        removeSession(session);
+        try {
+            removeSession(session);
+        }
+        catch (Exception E) {}
     }
 }

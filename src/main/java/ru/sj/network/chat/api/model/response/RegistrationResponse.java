@@ -30,11 +30,14 @@ public class RegistrationResponse extends BaseResponse {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void readObject(ObjectInputStream ois)
             throws ClassNotFoundException, IOException {
         ois.defaultReadObject();
         if (StatusCode.OK == this.getCode()) {
-            this.msgList = (List<MessageModel>)(ois.readObject());
+            Object listObj = ois.readObject();
+            if (listObj instanceof ArrayList)
+                this.msgList = (ArrayList<MessageModel>)listObj;
         }
     }
 
