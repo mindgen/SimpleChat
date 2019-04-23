@@ -1,177 +1,263 @@
 package ru.sj.network.chat.client;
 
-import ru.sj.network.chat.api.model.MessageModel;
 import ru.sj.network.chat.api.model.request.*;
-import ru.sj.network.chat.api.model.response.*;
 import ru.sj.network.chat.transport.INetworkTransport;
 import ru.sj.network.chat.transport.Request;
-import ru.sj.network.chat.transport.Response;
 
-import java.io.ByteArrayOutputStream;
-import java.io.Closeable;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.util.List;
+import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-public final class ChatClient implements Closeable {
 
-    private Socket client_socket;
+public class ChatClient implements Runnable, IChatClient {
+
+    private SocketChannel client_socket;
+    private Selector socketEventSelector;
+
     private INetworkTransport transport;
     private IChatEvents events;
-    private String userName;
+
+    private Object socket_event;
+    private volatile boolean stopLoop;
+
+    private Queue<Request> requestQueue;
+    private Queue<FutureResponse> responsesQueue;
+    private Lock queuesLock;
 
     public ChatClient(INetworkTransport transport, IChatEvents events) {
         this.transport = transport;
         this.events = events;
-    }
-    InetSocketAddress getAddress() { return this.client_socket != null ? (InetSocketAddress)client_socket.getRemoteSocketAddress() :
-                                                                        null;}
-    public synchronized void connect(InetSocketAddress address) throws IOException {
-        if (null != this.client_socket) throw new IOException("Already connected");
-        client_socket = new Socket();
-        client_socket.connect(address);
-        events.OnConnect();
-    }
 
-    public synchronized void close() throws IOException {
-        this.onClose();
-        client_socket.close();
-        client_socket = null;
+        this.socket_event = new Object();
+        this.stopLoop = false;
+
+        this.requestQueue = new LinkedList<>();
+        this.responsesQueue = new LinkedList<>();
+        this.queuesLock = new ReentrantLock();
     }
 
-    private String cookie;
-    protected void onClose() {
-        cookie = null;
-        userName = null;
-        events.OnDisconnect();
+    public ChatClient(INetworkTransport transport, IChatEvents events,
+                      Queue<Request> requests, Queue<FutureResponse> futureResponses,
+                      Lock queuesLock) {
+        this.transport = transport;
+        this.events = events;
+
+        this.socket_event = new Object();
+        this.stopLoop = false;
+
+        this.requestQueue = requests;
+        this.responsesQueue = futureResponses;
+        this.queuesLock = queuesLock;
     }
 
-    public boolean isConneted() {
-        return this.client_socket == null ? false : this.client_socket.isConnected();
-    }
+    SocketAddress getAddress() {
 
-    public boolean isRegistered() { return this.userName != null; }
-    public String getUserName() { return this.userName; }
+        SocketAddress address = null;
 
-    public List<MessageModel> registration(String userName) throws IOException {
-        RegistrationRequest req = (RegistrationRequest)RequestFactory.createRequest(RequestType.Registration);
-        req.setName(userName);
-
-        Response response = this.doRequest(this.createRequest(req));
-        if (response.getData() instanceof RegistrationResponse) {
-            RegistrationResponse regResponse = (RegistrationResponse)response.getData();
-            boolean isSuccess = regResponse.getCode() == StatusCode.OK;
-            if (isSuccess) {
-                this.userName = userName;
-            }
-            events.OnRegistration(isSuccess);
-            return regResponse.getMessages();
-        }
-
-        return null;
-    }
-
-    public boolean changeName(String newName) throws IOException {
-        ChangeNameRequest req = (ChangeNameRequest) RequestFactory.createRequest(RequestType.ChangeName);
-        req.setName(newName);
-
-        Response response = this.doRequest(this.createRequest(req));
-        if (response.getData() instanceof ChangeNameResponse) {
-            ChangeNameResponse nameResponse = (ChangeNameResponse)response.getData();
-            boolean isSuccess = nameResponse.getCode() == StatusCode.OK;
-            if (isSuccess) {
-                this.userName = newName;
-            }
-
-            events.OnChangeName(isSuccess);
-            return isSuccess;
-        }
-
-        return false;
-    }
-
-    public int getUsersCount() throws IOException {
-        GetUsersCountRequest req = (GetUsersCountRequest)RequestFactory.createRequest(RequestType.GetUsersCount);
-
-        Response response = this.doRequest(this.createRequest(req));
-        if (response.getData() instanceof GetUsersCountResponse) {
-            GetUsersCountResponse usersCntResponse = (GetUsersCountResponse)response.getData();
-            return usersCntResponse.getCount();
-        }
-
-        return -1;
-    }
-
-    public boolean sendMessage(String text) throws IOException {
-        SendMsgRequest req = (SendMsgRequest)RequestFactory.createRequest(RequestType.SendMessage);
-        req.setMessageText(text);
-
-        Response response = this.doRequest(this.createRequest(req));
-        if (response.getData() instanceof SendMsgResponse) {
-            SendMsgResponse msgResponse = (SendMsgResponse)response.getData();
-
-            boolean isSuccess = msgResponse.getCode() == StatusCode.OK;
-            events.OnSendMessage(isSuccess);
-            return isSuccess;
-        }
-
-        return false;
-    }
-
-    public void readMessages() throws IOException {
-        while (true) {
-            Response response = getRealTimeResponse();
-            if (null == response) break;
-            tryParseNewMessage((BaseResponse) response.getData());
-        }
-    }
-
-    public boolean tryParseNewMessage(BaseResponse responseModel) {
-        if (responseModel instanceof RealTimeResponse) {
-            if (responseModel instanceof NewMessageResponse) {
-                NewMessageResponse newMsgResponse = (NewMessageResponse)responseModel;
-                events.OnNewMessage(newMsgResponse.getMessage());
-
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private synchronized Response getRealTimeResponse() throws IOException {
         try {
-            if (this.client_socket.getInputStream().available() > 0) {
-                return this.transport.decodeResponse(this.client_socket.getInputStream());
-            }
-        } catch (Exception E) {
-            close();
-            throw E;
+            address = this.client_socket != null ?
+                    client_socket.getRemoteAddress() :
+                    null;
         }
+        catch (Exception e) {}
 
-        return null;
+        return address;
+
     }
 
-    private synchronized Response doRequest(Request request) throws IOException {
+    // Main block loop
+    @Override
+    public void run() {
+        while(!stopLoop) {
+            try {
+                waitConnect();
+                doCommands();
+            }
+            catch (InterruptedException Ex) { break; }
+        }
+    }
+
+    private void waitConnect() throws InterruptedException {
+        this.socket_event.wait(1000);
+    }
+
+    private void doCommands() throws InterruptedException {
+        synchronized (this) {
+            if (null == client_socket) return;
+        }
+
         try {
-            ByteArrayOutputStream dataStream = this.transport.encodeRequest(request);
-            dataStream.writeTo(this.client_socket.getOutputStream());
-            while(true) {
-                Response response = this.transport.decodeResponse(this.client_socket.getInputStream());
-                if (null != response) {
-                    if (!tryParseNewMessage((BaseResponse) response.getData()))
-                        return response;
+            client_socket.register(socketEventSelector, SelectionKey.OP_READ);
+
+            while (socketEventSelector.select() > -1) {
+                for (SelectionKey currentEvent : socketEventSelector.selectedKeys()) {
+                    if (!currentEvent.isValid()) continue;
+
+                    if (currentEvent.isReadable()) readData(currentEvent);
+                    if (currentEvent.isWritable()) writeData(currentEvent);
                 }
+                socketEventSelector.selectedKeys().clear();
             }
         }
         catch (Exception e) {
-            close();
-            throw e;
+            closeChannel();
         }
     }
+
+    void readData(SelectionKey key) {
+
+    }
+
+    void writeData(SelectionKey key) {
+        ByteBuffer buff = (ByteBuffer)key.attachment();
+        if (buff != null) {
+            SocketChannel channel = (SocketChannel)key.channel();
+            channel.write(buff.flip());
+            if (!buff.compact().hasRemaining()) {
+                key.attach(null);
+            } else return;
+        }
+
+        this.queuesLock.lock();
+        try {
+            Request req = this.requestQueue.poll();
+            if (null == req) {
+                key.interestOpsAnd(~SelectionKey.OP_WRITE);
+                return;
+            }
+
+            ByteArrayOutputStream this.transport.encodeRequest(req);
+        }
+        finally {
+            this.queuesLock.unlock();
+        }
+
+    }
+
+    private void closeChannel() {
+        try {
+            synchronized (this) {
+                client_socket.close();
+                client_socket = null;
+
+                socketEventSelector.close();
+                socketEventSelector = null;
+            }
+
+            getEventsHandler().OnDisconnect();
+        }
+        catch (Exception e) {}
+    }
+
+    // IChatClient
+    @Override
+    public synchronized boolean connect(SocketAddress endpoint) {
+        try {
+            client_socket = SocketChannel.open(endpoint);
+            socketEventSelector = Selector.open();
+        }
+        catch (Exception Ex) {
+            client_socket = null;
+            socketEventSelector = null;
+            return false;
+        }
+
+        if (null == socketEventSelector) {
+            return false;
+        }
+
+        getEventsHandler().OnConnect();
+        this.socket_event.notify();
+
+        return true;
+    }
+
+    @Override
+    public synchronized void disconnect() {
+        if (null == socketEventSelector) return;
+
+        try {
+            socketEventSelector.close();
+        }
+        catch (Exception e) {}
+    }
+
+    @Override
+    public void stop() {
+        stopLoop = true;
+        disconnect();
+    }
+
+    @Override
+    public synchronized boolean isConnected() {
+        return this.client_socket != null && this.client_socket.isConnected();
+    }
+
+    @Override
+    public FutureResponse registration(String name) {
+        RegistrationRequest req = (RegistrationRequest) RequestFactory.createRequest(RequestType.Registration);
+        req.setName(name);
+
+        return this.doRequest(this.createRequest(req));
+    }
+
+    @Override
+    public FutureResponse changeUserName(String name) {
+        ChangeNameRequest req = (ChangeNameRequest) RequestFactory.createRequest(RequestType.ChangeName);
+        req.setName(name);
+
+        return this.doRequest(this.createRequest(req));
+    }
+
+    @Override
+    public FutureResponse getUsersCount() {
+        GetUsersCountRequest req = (GetUsersCountRequest)RequestFactory.createRequest(RequestType.GetUsersCount);
+
+        return this.doRequest(this.createRequest(req));
+    }
+
+
+    @Override
+    public FutureResponse sendMessage(String text) {
+        SendMsgRequest req = (SendMsgRequest)RequestFactory.createRequest(RequestType.SendMessage);
+        req.setMessageText(text);
+
+        return this.doRequest(this.createRequest(req));
+    }
+
+    @Override
+    public IChatEvents getEventsHandler() {
+        return this.events;
+    }
+
+    // Internal helpers
 
     private Request createRequest(RequestBase model) {
         return this.transport.createRequest(model, null);
     }
+
+    private FutureResponse doRequest(Request req) {
+        FutureResponse futureResponse = new FutureResponse();
+
+        this.queuesLock.lock();
+        try {
+            requestQueue.add(req);
+            responsesQueue.add(futureResponse);
+            client_socket.register(socketEventSelector, SelectionKey.OP_WRITE);
+        }
+        catch (ClosedChannelException e) { futureResponse = null; }
+        finally {
+            this.queuesLock.unlock();
+        }
+
+        return futureResponse;
+    }
+
 }

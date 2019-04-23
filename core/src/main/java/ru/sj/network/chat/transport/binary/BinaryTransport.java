@@ -66,8 +66,7 @@ public class BinaryTransport implements INetworkTransport {
     }
 
     @Override
-    public ByteArrayOutputStream encodeRequest(Request req) {
-        ByteArrayOutputStream result_stream = new ByteArrayOutputStream();
+    public void encodeRequest(Request req, ByteArrayOutputStream result_stream) {
         try {
             ByteArrayOutputStream object_stream = new ByteArrayOutputStream();
             SerializerProxy.serialize(req.getData(), object_stream, this.serializer);
@@ -81,10 +80,8 @@ public class BinaryTransport implements INetworkTransport {
         }
         catch (IOException e)
         {
-            return null;
+            result_stream.reset();
         }
-
-        return result_stream;
     }
 
     public Response decodeResponse(InputStream inStream) throws IOException {
@@ -113,5 +110,5 @@ public class BinaryTransport implements INetworkTransport {
         object_stream.writeTo(stream);
     }
 
-    private final int maxRequestSize = 1024 * 3; // 1MB
+    private final int maxRequestSize = 1024 * 3;
 }
