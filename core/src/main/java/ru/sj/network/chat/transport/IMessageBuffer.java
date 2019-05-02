@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
  * Created by Eugene Sinitsyn
  */
 
-public interface IRequestBuffer {
+public interface IMessageBuffer {
     void writeToBuffer(ByteBuffer buffer);
 
     int remaining();
@@ -27,4 +27,6 @@ public interface IRequestBuffer {
     void flip();
 
     void compact();
+
+    void clear();
 }

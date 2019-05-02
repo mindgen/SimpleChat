@@ -1,12 +1,15 @@
 package ru.sj.network.chat.client;
 
 import ru.sj.network.chat.api.model.request.*;
-import ru.sj.network.chat.transport.INetworkTransport;
-import ru.sj.network.chat.transport.Request;
+import ru.sj.network.chat.api.model.response.BaseResponse;
+import ru.sj.network.chat.api.model.response.NewMessageResponse;
+import ru.sj.network.chat.api.model.response.RealTimeResponse;
+import ru.sj.network.chat.transport.*;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -31,7 +34,14 @@ public class ChatClient implements Runnable, IChatClient {
     private Queue<FutureResponse> responsesQueue;
     private Lock queuesLock;
 
-    public ChatClient(INetworkTransport transport, IChatEvents events) {
+    private BufferedRequestWriter writer;
+    private ByteBuffer readBuffer;
+    private IMessageBuffer msgBuffer;
+
+    private SelectionKey clientKey;
+
+    public ChatClient(INetworkTransport transport, IChatEvents events,
+                      ByteBuffer readBuffer, IMessageBuffer msgBuffer) {
         this.transport = transport;
         this.events = events;
 
@@ -41,11 +51,16 @@ public class ChatClient implements Runnable, IChatClient {
         this.requestQueue = new LinkedList<>();
         this.responsesQueue = new LinkedList<>();
         this.queuesLock = new ReentrantLock();
+
+        this.writer = new BufferedRequestWriter();
+        this.readBuffer = readBuffer;
+        this.msgBuffer = msgBuffer;
     }
 
     public ChatClient(INetworkTransport transport, IChatEvents events,
                       Queue<Request> requests, Queue<FutureResponse> futureResponses,
-                      Lock queuesLock) {
+                      Lock queuesLock, BufferedRequestWriter writer,
+                      ByteBuffer readBuffer, IMessageBuffer msgBuffer) {
         this.transport = transport;
         this.events = events;
 
@@ -55,6 +70,10 @@ public class ChatClient implements Runnable, IChatClient {
         this.requestQueue = requests;
         this.responsesQueue = futureResponses;
         this.queuesLock = queuesLock;
+
+        this.writer = writer;
+        this.readBuffer = readBuffer;
+        this.msgBuffer = msgBuffer;
     }
 
     SocketAddress getAddress() {
@@ -85,7 +104,9 @@ public class ChatClient implements Runnable, IChatClient {
     }
 
     private void waitConnect() throws InterruptedException {
-        this.socket_event.wait(1000);
+        synchronized (this.socket_event) {
+            this.socket_event.wait(1000);
+        }
     }
 
     private void doCommands() throws InterruptedException {
@@ -94,7 +115,7 @@ public class ChatClient implements Runnable, IChatClient {
         }
 
         try {
-            client_socket.register(socketEventSelector, SelectionKey.OP_READ);
+            clientKey = client_socket.register(socketEventSelector, SelectionKey.OP_READ);
 
             while (socketEventSelector.select() > -1) {
                 for (SelectionKey currentEvent : socketEventSelector.selectedKeys()) {
@@ -111,44 +132,72 @@ public class ChatClient implements Runnable, IChatClient {
         }
     }
 
-    void readData(SelectionKey key) {
+    void readData(SelectionKey key) throws IOException, InvalidProtocolException {
+        SocketChannel curSocket = (SocketChannel)key.channel();
 
+        if (!key.isValid()) {
+            closeChannel();
+            return;
+        }
+
+        int bytesRead;
+        bytesRead = curSocket.read(this.getReadBuffer());
+
+        this.getReadBuffer().flip();
+        Response response = this.transport.decodeResponse(this.getReadBuffer(), this.getMessageBuffer());
+        this.getReadBuffer().clear();
+
+        if (null != response) {
+            BaseResponse dataResponse = (BaseResponse)response.getData();
+            if (dataResponse instanceof RealTimeResponse) {
+                if (dataResponse instanceof NewMessageResponse) {
+                    NewMessageResponse newMsgResponse = (NewMessageResponse)dataResponse;
+                    this.getEventsHandler().OnNewMessage(newMsgResponse.getMessage());
+                }
+            } else {
+                FutureResponse curResponse = this.pollFutureResponse();
+                curResponse.setResponse(dataResponse);
+            }
+        }
+
+        if (bytesRead < 0) {
+            closeChannel();
+        }
     }
 
-    void writeData(SelectionKey key) {
-        ByteBuffer buff = (ByteBuffer)key.attachment();
-        if (buff != null) {
-            SocketChannel channel = (SocketChannel)key.channel();
-            channel.write(buff.flip());
-            if (!buff.compact().hasRemaining()) {
-                key.attach(null);
-            } else return;
-        }
+    void writeData(SelectionKey key) throws IOException {
+        SocketChannel curSocket = (SocketChannel)key.channel();
 
-        this.queuesLock.lock();
-        try {
-            Request req = this.requestQueue.poll();
-            if (null == req) {
-                key.interestOpsAnd(~SelectionKey.OP_WRITE);
-                return;
+        ByteBuffer curBuff = writer.getBuffer();
+        if (null == curBuff || 0 == curBuff.position()) {
+            if (writer.writeRequest(this.getRequest(key, false), this.transport)) {
+                this.getRequest(key, true);
             }
-
-            ByteArrayOutputStream this.transport.encodeRequest(req);
-        }
-        finally {
-            this.queuesLock.unlock();
+            curBuff = writer.getBuffer();
         }
 
+        if (null == curBuff) return;
+
+        curSocket.write(curBuff);
+        curBuff.compact();
     }
 
     private void closeChannel() {
         try {
             synchronized (this) {
-                client_socket.close();
-                client_socket = null;
+                if (null != client_socket) {
+                    client_socket.close();
+                    client_socket = null;
+                }
 
-                socketEventSelector.close();
-                socketEventSelector = null;
+                if (null != socketEventSelector) {
+                    socketEventSelector.close();
+                    socketEventSelector = null;
+                }
+                requestQueue.clear();
+                responsesQueue.clear();
+                msgBuffer.clear();
+                readBuffer.clear();
             }
 
             getEventsHandler().OnDisconnect();
@@ -161,6 +210,7 @@ public class ChatClient implements Runnable, IChatClient {
     public synchronized boolean connect(SocketAddress endpoint) {
         try {
             client_socket = SocketChannel.open(endpoint);
+            client_socket.configureBlocking(false);
             socketEventSelector = Selector.open();
         }
         catch (Exception Ex) {
@@ -173,8 +223,10 @@ public class ChatClient implements Runnable, IChatClient {
             return false;
         }
 
+        synchronized (this.socket_event) {
+            this.socket_event.notify();
+        }
         getEventsHandler().OnConnect();
-        this.socket_event.notify();
 
         return true;
     }
@@ -244,20 +296,94 @@ public class ChatClient implements Runnable, IChatClient {
     }
 
     private FutureResponse doRequest(Request req) {
+        return addRequest(req);
+    }
+
+    FutureResponse addRequest(Request req) {
         FutureResponse futureResponse = new FutureResponse();
 
         this.queuesLock.lock();
         try {
             requestQueue.add(req);
             responsesQueue.add(futureResponse);
-            client_socket.register(socketEventSelector, SelectionKey.OP_WRITE);
+            clientKey.interestOpsOr(SelectionKey.OP_WRITE);
+
+            socketEventSelector.wakeup();
         }
-        catch (ClosedChannelException e) { futureResponse = null; }
+        catch (Exception Ex) { return null;}
         finally {
             this.queuesLock.unlock();
         }
 
         return futureResponse;
+    }
+
+    Request getRequest(SelectionKey curKey, boolean remove) {
+        this.queuesLock.lock();
+        try {
+            Request req = remove ? requestQueue.poll() : requestQueue.peek();
+            if (null == req) {
+                curKey.interestOpsAnd(~SelectionKey.OP_WRITE);
+            }
+
+            return req;
+        }
+        finally {
+            this.queuesLock.unlock();
+        }
+    }
+
+    FutureResponse pollFutureResponse() {
+        this.queuesLock.lock();
+        try {
+            return responsesQueue.poll();
+        }
+        finally {
+            this.queuesLock.unlock();
+        }
+    }
+
+    ByteBuffer getReadBuffer() { return this.readBuffer; }
+    IMessageBuffer getMessageBuffer() { return this.msgBuffer; }
+
+    class BufferedRequestWriter {
+        BufferedRequestWriter() { stream = new ByteBufferOutputStream(); }
+
+        ByteBuffer buffer;
+        ByteBufferOutputStream stream;
+
+        boolean writeRequest(Request req, INetworkTransport transport) throws IOException {
+            if (null != buffer && buffer.position() > 0) {
+                buffer.flip();
+                return false;
+            }
+
+            if (null == req) {
+                buffer.flip();
+                return false;
+            }
+
+            stream.reset();
+            transport.encodeRequest(req, stream);
+            buffer = ByteBuffer.wrap(stream.getData(), 0, stream.size());
+
+            return true;
+        }
+
+        ByteBuffer getBuffer() { return this.buffer; }
+
+        boolean isEmpty() { return null == this.buffer || !this.buffer.hasRemaining(); }
+
+        class ByteBufferOutputStream extends ByteArrayOutputStream {
+            public byte[] getData() {
+                return this.buf;
+            }
+        }
+
+        void clear() {
+            buffer = null;
+            stream.reset();
+        }
     }
 
 }

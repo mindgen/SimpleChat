@@ -159,10 +159,13 @@ public class ServerInstance extends ThreadsServer {
             while (true)
             {
                 curSession.updateWriteBuffer();
-                int wCnt = curSocket.write(curSession.getWriteBuffer());
+                ByteBuffer curBuffer = curSession.getWriteBuffer();
+                if (null == curBuffer) break;
 
-                curSession.getWriteBuffer().compact();
-                if (curSession.getWriteBuffer().position() > 0) {
+                int wCnt = curSocket.write(curBuffer);
+
+                curBuffer.compact();
+                if (curBuffer.position() > 0) {
                     break;
                 } else if (0 == wCnt) break;
             }

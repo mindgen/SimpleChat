@@ -1,6 +1,6 @@
 package ru.sj.network.chat.server.tcp;
 
-import ru.sj.network.chat.transport.IRequestBuffer;
+import ru.sj.network.chat.transport.IMessageBuffer;
 import ru.sj.network.chat.transport.MessageBuffer;
 
 /**
@@ -9,7 +9,7 @@ import ru.sj.network.chat.transport.MessageBuffer;
 
 public class SessionBufferFactoryImpl implements ISessionBufferFactory {
     @Override
-    public IRequestBuffer createRequestBuffer() {
+    public IMessageBuffer createRequestBuffer() {
         return new MessageBuffer();
     }
 }

@@ -1,6 +1,8 @@
 package ru.sj.chatApp;
 
+import ru.sj.network.chat.api.model.response.GetUsersCountResponse;
 import ru.sj.network.chat.client.ChatClient;
+import ru.sj.network.chat.client.FutureResponse;
 
 /**
  * Created by Eugene Sinitsyn
@@ -30,7 +32,10 @@ class GetUsersCountCommand implements IChatCommand {
     @Override
     public void execute() {
         try {
-            app.writeLine(String.valueOf(app.getClient().getUsersCount()));
+            FutureResponse future = app.getClient().getUsersCount();
+            GetUsersCountResponse response = utils.checkResponse(future.waitResponse(), GetUsersCountResponse.class, app);
+            if (null != response)
+                app.writeLine(String.valueOf(response.getCount()));
         }
         catch (Exception e) {}
     }

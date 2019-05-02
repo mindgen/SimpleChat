@@ -21,7 +21,7 @@ public class SessionImpl implements ISession {
 
     SessionIdImp mId;
     ISessionsManager mManager;
-    IRequestBuffer reqBuffer;
+    IMessageBuffer reqBuffer;
     Queue<Response> responseStorage;
     BufferedResponseWriter buffWriter;
 
@@ -30,7 +30,7 @@ public class SessionImpl implements ISession {
 
     SelectionKey selKey;
 
-    public SessionImpl(ISessionsManager manager, IRequestBuffer buffer,
+    public SessionImpl(ISessionsManager manager, IMessageBuffer buffer,
                        Queue<Response> responseStorage, Queue<Response> realTimeResponseStorage,
                        SelectionKey selKey) {
         this.mId = SessionIdImp.generateNew();
@@ -91,7 +91,7 @@ public class SessionImpl implements ISession {
             realTimeStorageLock.lock();
             if (buffWriter.writeResponse(realTimeResponseStorage.peek(), this.getManager().getTransport())) {
                 realTimeResponseStorage.remove();
-            } else {
+            } else if (buffWriter.isEmpty()) {
                 setNeedWriteToSocket(false);
             }
             realTimeStorageLock.unlock();
@@ -104,7 +104,7 @@ public class SessionImpl implements ISession {
     }
 
     @Override
-    public IRequestBuffer getRequestBuffer() {
+    public IMessageBuffer getRequestBuffer() {
         return this.reqBuffer;
     }
 
@@ -154,6 +154,8 @@ public class SessionImpl implements ISession {
         ByteBuffer getBuffer() {
             return this.buffer;
         }
+
+        boolean isEmpty() { return null == this.buffer || !this.buffer.hasRemaining(); }
 
         class ByteBufferOutputStream extends ByteArrayOutputStream {
             public byte[] getData() {

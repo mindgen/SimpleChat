@@ -5,10 +5,8 @@ import ru.sj.network.chat.server.ISession;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Collection;
 
 /**
  * Created by Eugene Sinitsyn
@@ -18,7 +16,7 @@ public interface INetworkTransport {
     Request decodeRequest(ByteBuffer buffer, ISession session) throws InvalidProtocolException;
     void encodeRequest(Request req, ByteArrayOutputStream result_stream);
 
-    Response decodeResponse(InputStream inStream) throws IOException;
+    Response decodeResponse(ByteBuffer buffer, IMessageBuffer msgBuffer) throws InvalidProtocolException;
     void encodeResponse(Response response, OutputStream stream) throws IOException;
 
     Response createEmptyResponse();

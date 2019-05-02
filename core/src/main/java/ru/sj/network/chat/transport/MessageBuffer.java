@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
  * Created by Eugene Sinitsyn
  */
 
-public class MessageBuffer implements IRequestBuffer {
+public class MessageBuffer implements IMessageBuffer {
     private ByteBuffer mBuffer;
 
     public void writeToBuffer(ByteBuffer buffer) {
@@ -61,4 +61,6 @@ public class MessageBuffer implements IRequestBuffer {
     public void compact() {
         mBuffer.compact();
     }
+
+    public void clear() { mBuffer.clear(); }
 }

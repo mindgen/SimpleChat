@@ -4,17 +4,21 @@ import org.w3c.dom.Text;
 import ru.sj.chatApp.IChatCommand;
 import ru.sj.network.chat.api.model.MessageModel;
 import ru.sj.network.chat.api.model.TextMessageModel;
+import ru.sj.network.chat.api.model.response.BaseResponse;
+import ru.sj.network.chat.api.model.response.RegistrationResponse;
+import ru.sj.network.chat.api.model.response.StatusCode;
 import ru.sj.network.chat.client.ChatClient;
+import ru.sj.network.chat.client.FutureResponse;
+import ru.sj.network.chat.client.IChatClient;
 import ru.sj.network.chat.client.IChatEvents;
+import ru.sj.network.chat.transport.MessageBuffer;
 import ru.sj.network.chat.transport.ObjectModelSerializer;
 import ru.sj.network.chat.transport.binary.BinaryTransport;
 
 import java.io.*;
 import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.TreeMap;
+import java.nio.ByteBuffer;
+import java.util.*;
 
 public final class ClientApplication implements IChatEvents {
 
@@ -35,7 +39,6 @@ public final class ClientApplication implements IChatEvents {
         addCmd(new SendMessageCommand(this));
         addCmd(new HelpCommand(this));
         addCmd(new ExitCommand(this));
-        addCmd(new GetNewMessagesCommand(this));
     }
 
     private void addCmd(IChatCommand cmd) {
@@ -54,8 +57,9 @@ public final class ClientApplication implements IChatEvents {
         return Collections.unmodifiableCollection(cmds.values());
     }
 
-    ChatClient client = new ChatClient(new BinaryTransport(new ObjectModelSerializer()), this);
-    ChatClient getClient() { return this.client; }
+    IChatClient client = new ChatClient(new BinaryTransport(new ObjectModelSerializer()), this,
+            ByteBuffer.allocate(1024), new MessageBuffer());
+    IChatClient getClient() { return this.client; }
 
     public static void main(String[] args) {
         ClientApplication app = new ClientApplication();
@@ -63,9 +67,11 @@ public final class ClientApplication implements IChatEvents {
     }
 
     public void doIt() {
+        (new Thread((Runnable) client)).start();
+
         try {
             doGreetings();
-            while (!client.isConneted()) {
+            while (!client.isConnected()) {
                 doEnterServer();
                 try {
                     client.connect(new InetSocketAddress(this.srvName, this.port));
@@ -75,21 +81,11 @@ public final class ClientApplication implements IChatEvents {
                 }
             }
 
-            while (!client.isRegistered()) {
-                doEnterName();
-                List<MessageModel> messages = client.registration(this.userName);
-                if (null != messages) {
-                    messages.forEach((msg) -> {
-                        try {
-                            writeMessage(msg);
-                        } catch (Exception E){}
-                    });
-                }
-            }
+            doRegistration();
 
             doCommandLoop();
             clearCmds();
-            client.close();
+            client.stop();
         }
         catch (Exception ex) {
             ex.printStackTrace();
@@ -114,15 +110,23 @@ public final class ClientApplication implements IChatEvents {
     private BufferedReader getReader() { return this.inStream; }
     private BufferedWriter getWriter() { return this.outStream; }
 
-    void writeLine(String value) throws  IOException {
+    synchronized void writeLine(String value) throws  IOException {
         this.getWriter().write(value);
         this.getWriter().newLine();
         this.getWriter().flush();
     }
 
-    void write(String value) throws  IOException {
+    synchronized void write(String value) throws  IOException {
         this.getWriter().write(value);
         this.getWriter().flush();
+    }
+
+    synchronized void writeErrorAndExit(String val) throws IOException {
+        this.getWriter().write("Error: ");
+        this.getWriter().write(val);
+        this.getWriter().newLine();
+        this.getWriter().flush();
+        exit();
     }
 
     private void writeMessage(MessageModel msg) throws IOException {
@@ -176,6 +180,29 @@ public final class ClientApplication implements IChatEvents {
         return false;
     }
 
+    void doRegistration() throws IOException {
+        while (true) {
+            doEnterName();
+            FutureResponse future = client.registration(this.userName);
+            BaseResponse response = future.waitResponse();
+            RegistrationResponse regResp = utils.checkResponse(response, RegistrationResponse.class, this);
+            if (null != regResp) {
+                List<MessageModel> messages = regResp.getMessages();
+                if (null != messages) {
+                    messages.forEach((msg) -> {
+                        try {
+                            writeMessage(msg);
+                        } catch (Exception E){}
+                    });
+                }
+                if (StatusCode.OK == regResp.getCode())
+                    break;
+                else
+                    this.writeLine("Name already in use");
+            }
+        }
+    }
+
     // IChatEvents implementation
 
     @Override
@@ -193,36 +220,6 @@ public final class ClientApplication implements IChatEvents {
             this.exit();
         }
         catch (Exception e) { }
-    }
-
-    @Override
-    public void OnRegistration(boolean success) {
-        try {
-            if (success) {
-                writeLine("Registration is done");
-            }
-            else {
-                writeLine("Registration fail. Enter another name");
-            }
-        }
-        catch (Exception e) { }
-    }
-
-    @Override
-    public void OnChangeName(boolean success) {
-        try {
-            if (success) {
-                writeLine("Name changed");
-            } else {
-                writeLine("Name already in use another user");
-            }
-        }
-        catch (Exception e) { }
-    }
-
-    @Override
-    public void OnSendMessage(boolean success) {
-
     }
 
     @Override

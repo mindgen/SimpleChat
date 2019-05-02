@@ -32,7 +32,7 @@ public class BinaryTransport implements INetworkTransport {
 
     @Override
     public Request decodeRequest(ByteBuffer buffer, ISession session) throws InvalidProtocolException {
-        IRequestBuffer msgBuffer = session.getRequestBuffer();
+        IMessageBuffer msgBuffer = session.getRequestBuffer();
         msgBuffer.writeToBuffer(buffer);
         msgBuffer.flip();
         Request resultReq = null;
@@ -45,7 +45,7 @@ public class BinaryTransport implements INetworkTransport {
                     byte[] msgPayload = new byte[msgLen];
                     msgBuffer.array(msgPayload);
                     Object objectData = SerializerProxy.deserialize(msgPayload, this.serializer);
-                    if (null != objectData) {
+                    if (null != objectData && objectData instanceof RequestBase) {
                         resultReq = this.createRequest((RequestBase)objectData, session);
                     }
                     else {
@@ -63,6 +63,42 @@ public class BinaryTransport implements INetworkTransport {
         }
         msgBuffer.compact();
         return resultReq;
+    }
+
+    @Override
+    public Response decodeResponse(ByteBuffer buffer, IMessageBuffer msgBuffer) throws InvalidProtocolException {
+        msgBuffer.writeToBuffer(buffer);
+        msgBuffer.flip();
+
+        Response resultResponse = null;
+        try {
+            while (true) {
+                msgBuffer.mark();
+                short msgLen = msgBuffer.getShort();
+                if (msgLen > maxRequestSize) throw new InvalidProtocolException();
+                if (msgBuffer.remaining() >= msgLen) {
+                    byte[] msgPayload = new byte[msgLen];
+                    msgBuffer.array(msgPayload);
+                    Object objectData = SerializerProxy.deserialize(msgPayload, this.serializer);
+                    if (null != objectData && objectData instanceof BaseResponse) {
+                        resultResponse = createEmptyResponse();
+                        resultResponse.setData(objectData);
+                    }
+                    else {
+                        throw new InvalidProtocolException();
+                    }
+                }
+                else {
+                    msgBuffer.reset();
+                    break;
+                }
+            }
+        }
+        catch (BufferUnderflowException e) {
+            msgBuffer.reset();
+        }
+        msgBuffer.compact();
+        return resultResponse;
     }
 
     @Override
@@ -84,20 +120,7 @@ public class BinaryTransport implements INetworkTransport {
         }
     }
 
-    public Response decodeResponse(InputStream inStream) throws IOException {
-        DataInputStream reader = new DataInputStream(inStream);
-        short size = reader.readShort();
-        ByteArrayInputStream objectStream = new ByteArrayInputStream(reader.readNBytes(size));
-        Object modelObject = SerializerProxy.deserialize(objectStream, this.serializer);
-        if (modelObject instanceof BaseResponse) {
-            Response response = createEmptyResponse();
-            response.setData(modelObject);
-
-            return response;
-        }
-        else throw new IOException();
-    }
-
+    @Override
     public void encodeResponse(Response response, OutputStream stream) throws IOException {
         ByteArrayOutputStream object_stream = new ByteArrayOutputStream();
         SerializerProxy.serialize(response.getData(), object_stream, this.serializer);

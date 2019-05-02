@@ -1,6 +1,9 @@
 package ru.sj.chatApp;
 
-import ru.sj.network.chat.client.ChatClient;
+import ru.sj.network.chat.api.model.response.BaseResponse;
+import ru.sj.network.chat.api.model.response.ChangeNameResponse;
+import ru.sj.network.chat.api.model.response.StatusCode;
+import ru.sj.network.chat.client.FutureResponse;
 
 /**
  * Created by Eugene Sinitsyn
@@ -35,7 +38,14 @@ class ChangeNameCommand implements IChatCommand {
     @Override
     public void execute() {
         try {
-            app.getClient().changeName(this.newName);
+            FutureResponse future = app.getClient().changeUserName(this.newName);
+            ChangeNameResponse response = utils.checkResponse(future.waitResponse(), ChangeNameResponse.class, app);
+            if (null != response) {
+                if (StatusCode.OK == response.getCode())
+                    app.writeLine("Username changes successfully");
+                else
+                    app.writeLine("Username already in use");
+            }
         }
         catch (Exception e) {}
     }

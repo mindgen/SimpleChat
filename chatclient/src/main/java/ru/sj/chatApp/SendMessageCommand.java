@@ -1,6 +1,8 @@
 package ru.sj.chatApp;
 
+import ru.sj.network.chat.api.model.response.SendMsgResponse;
 import ru.sj.network.chat.client.ChatClient;
+import ru.sj.network.chat.client.FutureResponse;
 
 /**
  * Created by Eugene Sinitsyn
@@ -34,7 +36,10 @@ public class SendMessageCommand implements IChatCommand {
     @Override
     public void execute() {
         try {
-            app.getClient().sendMessage(message);
+            FutureResponse future = app.getClient().sendMessage(message);
+            SendMsgResponse response = utils.checkResponse(future.waitResponse(), SendMsgResponse.class, app);
+            if (null != response)
+                app.writeLine("OK");
         }
         catch (Exception e) {}
     }
