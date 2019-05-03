@@ -60,9 +60,8 @@ public class SessionImpl implements ISession {
     }
 
     @Override
-    public Request readData(ByteBuffer buffer) throws InvalidProtocolException {
-        Request req = this.getManager().getTransport().decodeRequest(buffer, this);
-        return req;
+    public Queue<Request> readData(ByteBuffer buffer) throws InvalidProtocolException {
+        return this.getManager().getTransport().decodeRequest(buffer, this);
     }
 
     @Override

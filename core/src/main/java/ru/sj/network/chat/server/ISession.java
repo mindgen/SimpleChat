@@ -9,6 +9,7 @@ import ru.sj.network.chat.transport.Response;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Queue;
 
 /**
  * Created by Eugene Sinitsyn
@@ -19,7 +20,7 @@ public interface ISession {
     ISessionsManager getManager();
     void close();
 
-    Request readData(ByteBuffer buffer) throws InvalidProtocolException;
+    Queue<Request> readData(ByteBuffer buffer) throws InvalidProtocolException;
 
     void storeResponse(Response response);
     void storeRealTimeResponse(RealTimeResponse responseModel);

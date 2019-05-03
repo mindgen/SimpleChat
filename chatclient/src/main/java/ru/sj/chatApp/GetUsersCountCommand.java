@@ -1,7 +1,6 @@
 package ru.sj.chatApp;
 
 import ru.sj.network.chat.api.model.response.GetUsersCountResponse;
-import ru.sj.network.chat.client.ChatClient;
 import ru.sj.network.chat.client.FutureResponse;
 
 /**

@@ -1,6 +1,5 @@
 package ru.sj.chatApp;
 
-import ru.sj.network.chat.api.model.response.BaseResponse;
 import ru.sj.network.chat.api.model.response.ChangeNameResponse;
 import ru.sj.network.chat.api.model.response.StatusCode;
 import ru.sj.network.chat.client.FutureResponse;

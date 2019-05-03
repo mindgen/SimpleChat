@@ -8,6 +8,8 @@ import ru.sj.network.chat.transport.*;
 import java.io.*;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /**
  * Created by Eugene Sinitsyn
@@ -31,22 +33,21 @@ public class BinaryTransport implements INetworkTransport {
     }
 
     @Override
-    public Request decodeRequest(ByteBuffer buffer, ISession session) throws InvalidProtocolException {
+    public Queue<Request> decodeRequest(ByteBuffer buffer, ISession session) throws InvalidProtocolException {
         IMessageBuffer msgBuffer = session.getRequestBuffer();
         msgBuffer.writeToBuffer(buffer);
         msgBuffer.flip();
-        Request resultReq = null;
+        LinkedList<Request> result = new LinkedList<>();
         try {
             while (true) {
                 msgBuffer.mark();
                 short msgLen = msgBuffer.getShort();
-                if (msgLen > maxRequestSize) throw new InvalidProtocolException();
                 if (msgBuffer.remaining() >= msgLen) {
                     byte[] msgPayload = new byte[msgLen];
                     msgBuffer.array(msgPayload);
                     Object objectData = SerializerProxy.deserialize(msgPayload, this.serializer);
                     if (null != objectData && objectData instanceof RequestBase) {
-                        resultReq = this.createRequest((RequestBase)objectData, session);
+                        result.offer(this.createRequest((RequestBase)objectData, session));
                     }
                     else {
                         throw new InvalidProtocolException();
@@ -62,27 +63,27 @@ public class BinaryTransport implements INetworkTransport {
             msgBuffer.reset();
         }
         msgBuffer.compact();
-        return resultReq;
+        return result;
     }
 
     @Override
-    public Response decodeResponse(ByteBuffer buffer, IMessageBuffer msgBuffer) throws InvalidProtocolException {
+    public Queue<Response> decodeResponse(ByteBuffer buffer, IMessageBuffer msgBuffer) throws InvalidProtocolException {
         msgBuffer.writeToBuffer(buffer);
         msgBuffer.flip();
 
-        Response resultResponse = null;
+        LinkedList<Response> result = new LinkedList<>();
         try {
             while (true) {
                 msgBuffer.mark();
                 short msgLen = msgBuffer.getShort();
-                if (msgLen > maxRequestSize) throw new InvalidProtocolException();
                 if (msgBuffer.remaining() >= msgLen) {
                     byte[] msgPayload = new byte[msgLen];
                     msgBuffer.array(msgPayload);
                     Object objectData = SerializerProxy.deserialize(msgPayload, this.serializer);
                     if (null != objectData && objectData instanceof BaseResponse) {
-                        resultResponse = createEmptyResponse();
+                        Response resultResponse = createEmptyResponse();
                         resultResponse.setData(objectData);
+                        result.offer(resultResponse);
                     }
                     else {
                         throw new InvalidProtocolException();
@@ -98,7 +99,7 @@ public class BinaryTransport implements INetworkTransport {
             msgBuffer.reset();
         }
         msgBuffer.compact();
-        return resultResponse;
+        return result;
     }
 
     @Override
@@ -132,6 +133,4 @@ public class BinaryTransport implements INetworkTransport {
 
         object_stream.writeTo(stream);
     }
-
-    private final int maxRequestSize = 1024 * 3;
 }

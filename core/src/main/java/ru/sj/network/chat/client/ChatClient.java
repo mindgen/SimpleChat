@@ -15,6 +15,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -115,16 +116,15 @@ public class ChatClient implements Runnable, IChatClient {
         }
 
         try {
-            clientKey = client_socket.register(socketEventSelector, SelectionKey.OP_READ);
-
             while (socketEventSelector.select() > -1) {
-                for (SelectionKey currentEvent : socketEventSelector.selectedKeys()) {
+                Set<SelectionKey> selectedKeys = socketEventSelector.selectedKeys();
+                for (SelectionKey currentEvent : selectedKeys) {
                     if (!currentEvent.isValid()) continue;
 
                     if (currentEvent.isReadable()) readData(currentEvent);
                     if (currentEvent.isWritable()) writeData(currentEvent);
                 }
-                socketEventSelector.selectedKeys().clear();
+                selectedKeys.clear();
             }
         }
         catch (Exception e) {
@@ -144,19 +144,21 @@ public class ChatClient implements Runnable, IChatClient {
         bytesRead = curSocket.read(this.getReadBuffer());
 
         this.getReadBuffer().flip();
-        Response response = this.transport.decodeResponse(this.getReadBuffer(), this.getMessageBuffer());
+        Queue<Response> responses = this.transport.decodeResponse(this.getReadBuffer(), this.getMessageBuffer());
         this.getReadBuffer().clear();
 
-        if (null != response) {
-            BaseResponse dataResponse = (BaseResponse)response.getData();
-            if (dataResponse instanceof RealTimeResponse) {
-                if (dataResponse instanceof NewMessageResponse) {
-                    NewMessageResponse newMsgResponse = (NewMessageResponse)dataResponse;
-                    this.getEventsHandler().OnNewMessage(newMsgResponse.getMessage());
+        for (Response response : responses) {
+            if (null != response) {
+                BaseResponse dataResponse = (BaseResponse)response.getData();
+                if (dataResponse instanceof RealTimeResponse) {
+                    if (dataResponse instanceof NewMessageResponse) {
+                        NewMessageResponse newMsgResponse = (NewMessageResponse)dataResponse;
+                        this.getEventsHandler().OnNewMessage(newMsgResponse.getMessage());
+                    }
+                } else {
+                    FutureResponse curResponse = this.pollFutureResponse();
+                    curResponse.setResponse(dataResponse);
                 }
-            } else {
-                FutureResponse curResponse = this.pollFutureResponse();
-                curResponse.setResponse(dataResponse);
             }
         }
 
@@ -212,6 +214,8 @@ public class ChatClient implements Runnable, IChatClient {
             client_socket = SocketChannel.open(endpoint);
             client_socket.configureBlocking(false);
             socketEventSelector = Selector.open();
+
+            clientKey = client_socket.register(socketEventSelector, SelectionKey.OP_READ);
         }
         catch (Exception Ex) {
             client_socket = null;

@@ -18,6 +18,8 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.AbstractSelectableChannel;
 import java.util.Collection;
+import java.util.Queue;
+import java.util.Set;
 
 /**
  * Created by Eugene Sinitsyn
@@ -89,7 +91,8 @@ public class ServerInstance extends ThreadsServer {
 
             mServerSocket.register(eventSelector, mServerSocket.validOps());
             while (eventSelector.select() > -1 && !this.IsTerminated()) {
-                for (SelectionKey currentEvent : eventSelector.selectedKeys()) {
+                Set<SelectionKey> selectedKeys = eventSelector.selectedKeys();
+                for (SelectionKey currentEvent : selectedKeys) {
                     if (!currentEvent.isValid()) continue;
                     try {
                         if (currentEvent.isAcceptable()) {
@@ -105,7 +108,7 @@ public class ServerInstance extends ThreadsServer {
                         closeChannel(currentEvent);
                     }
                 }
-                eventSelector.selectedKeys().clear();
+                selectedKeys.clear();
             }
 
         }
@@ -130,10 +133,10 @@ public class ServerInstance extends ThreadsServer {
             bytesRead = curSocket.read(this.getBuffer());
 
             this.getBuffer().flip();
-            Request request = curSession.readData(this.getBuffer());
+            Queue<Request> requests = curSession.readData(this.getBuffer());
             this.getBuffer().clear();
 
-            if (null != request) {
+            for (Request request : requests) {
                 Response response = executor.executeCmds(request,
                         curSession.getManager().getTransport());
 

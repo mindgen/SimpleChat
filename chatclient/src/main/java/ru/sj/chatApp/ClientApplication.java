@@ -1,16 +1,11 @@
 package ru.sj.chatApp;
 
-import org.w3c.dom.Text;
-import ru.sj.chatApp.IChatCommand;
 import ru.sj.network.chat.api.model.MessageModel;
 import ru.sj.network.chat.api.model.TextMessageModel;
 import ru.sj.network.chat.api.model.response.BaseResponse;
 import ru.sj.network.chat.api.model.response.RegistrationResponse;
 import ru.sj.network.chat.api.model.response.StatusCode;
-import ru.sj.network.chat.client.ChatClient;
-import ru.sj.network.chat.client.FutureResponse;
-import ru.sj.network.chat.client.IChatClient;
-import ru.sj.network.chat.client.IChatEvents;
+import ru.sj.network.chat.client.*;
 import ru.sj.network.chat.transport.MessageBuffer;
 import ru.sj.network.chat.transport.ObjectModelSerializer;
 import ru.sj.network.chat.transport.binary.BinaryTransport;
