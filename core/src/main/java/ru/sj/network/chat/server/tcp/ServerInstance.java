@@ -199,6 +199,7 @@ public class ServerInstance extends ThreadsServer {
 
         private void closeChannel(SelectionKey key)  {
             ISession curSession = (ISession)key.attachment();
+            key.attach(null);
             if (null != curSession)
                 curSession.close();
             cancelSelectedKey(key);

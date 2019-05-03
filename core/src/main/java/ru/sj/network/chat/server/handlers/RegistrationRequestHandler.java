@@ -27,7 +27,9 @@ public class RegistrationRequestHandler implements IHandler {
     public void doRequest(Request request, Response response) {
         RegistrationRequest regModel = (RegistrationRequest)request.getData();
 
-        logger.info("Registration request, session id - '{}'", request.getSession().getId().toString());
+        logger.info("Registration request with User '{}', session id - '{}'",
+                regModel.getValue(),
+                request.getSession().getId().toString());
 
         List<Message> lastMsgs;
         try {

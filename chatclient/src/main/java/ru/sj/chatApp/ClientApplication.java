@@ -165,7 +165,7 @@ public final class ClientApplication implements IChatEvents {
     private boolean isAlive() { return this.work; }
 
     private boolean doExecuteCommand(String cmd) {
-        if (cmd.isBlank() || cmd.isEmpty()) return false;
+        if (null == cmd || cmd.isEmpty() || cmd.isBlank()) return false;
         int cmd_last = cmd.indexOf(" ");
 
         String cmdName = ((-1 == cmd_last) ? cmd : cmd.substring(0, cmd_last)).toLowerCase();

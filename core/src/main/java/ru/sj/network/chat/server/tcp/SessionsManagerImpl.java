@@ -1,12 +1,12 @@
 package ru.sj.network.chat.server.tcp;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.sj.network.chat.server.ISession;
 import ru.sj.network.chat.server.ISessionId;
 import ru.sj.network.chat.server.ISessionsManager;
 import ru.sj.network.chat.server.ISessionsManagerEvents;
 import ru.sj.network.chat.transport.INetworkTransport;
-import ru.sj.network.chat.transport.MessageBuffer;
-import ru.sj.network.chat.transport.Response;
 
 import java.nio.channels.SelectionKey;
 import java.util.HashMap;
@@ -17,6 +17,8 @@ import java.util.LinkedList;
  */
 
 public class SessionsManagerImpl implements ISessionsManager {
+
+    private final Logger logger = LoggerFactory.getLogger(SessionsManagerImpl.class);
 
     INetworkTransport netTransport;
     ISessionBufferFactory bufFactory;
@@ -36,6 +38,9 @@ public class SessionsManagerImpl implements ISessionsManager {
                                                     new LinkedList<>(), new LinkedList<>(), sessionKey);
         mSessions.put(newSession.getId(), newSession);
         if (null != this.events_handler) this.events_handler.onOpenSession(newSession);
+
+        logger.info("Open new session id - '{}' on thread '{}'", newSession.getId().toString(), Thread.currentThread().getName());
+
         return newSession;
     }
 
@@ -46,6 +51,8 @@ public class SessionsManagerImpl implements ISessionsManager {
         if (null != this.events_handler) this.events_handler.onCloseSession(session);
         ((SessionImpl)session).freeResources();
         mSessions.remove(session.getId());
+
+        logger.info("Close session id - '{}", session.getId().toString());
     }
 
     @Override
