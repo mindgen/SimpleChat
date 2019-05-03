@@ -60,7 +60,7 @@ class ClientWorker implements Runnable, IChatEvents {
     void randomSleep() {
 
         try {
-            sleep(this.getRandomizer().nextInt(30) * 100);
+            sleep(this.getRandomizer().nextInt(30) * 1000);
         }
         catch (Exception ex) {}
     }
@@ -68,14 +68,15 @@ class ClientWorker implements Runnable, IChatEvents {
     boolean doCmd() {
         boolean cmdResult = true;
         int curEvent = this.getRandomizer().nextInt();
-        if (0 == (curEvent % 9)) {
+        if (0 == (curEvent % 20)) {
             cmdResult = changeUsername();
         }
-        else if(0 == (curEvent % 5)) {
+        else if (0 == (curEvent % 5)) {
             cmdResult = getUsersCount();
         }
-        else
+        else if (0 == (curEvent % 3)) {
             cmdResult = sendMessage();
+        }
 
         ++cmdCount;
 
