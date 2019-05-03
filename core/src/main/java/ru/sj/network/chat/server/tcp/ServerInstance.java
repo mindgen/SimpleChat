@@ -187,7 +187,6 @@ public class ServerInstance extends ThreadsServer {
         private void configureServerSocket(ServerSocketChannel sckChannel) throws IOException {
             configureSocket(sckChannel);
 
-            sckChannel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
             if (sckChannel.supportedOptions().contains(StandardSocketOptions.SO_REUSEPORT))
                 sckChannel.setOption(StandardSocketOptions.SO_REUSEPORT, true);
         }

@@ -117,8 +117,10 @@ public class SessionImpl implements ISession {
     private void setNeedWriteToSocket(boolean needWrite) {
         try {
             if (null != this.selKey) {
-                if (needWrite)
+                if (needWrite) {
                     this.selKey.interestOpsOr(SelectionKey.OP_WRITE);
+                    this.selKey.selector().wakeup();
+                }
                 else
                     this.selKey.interestOpsAnd(~SelectionKey.OP_WRITE);
             }

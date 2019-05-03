@@ -44,10 +44,12 @@ class ClientWorker implements Runnable, IChatEvents {
             synchronized (this) {
                 receivedMsg = 0;
             }
+            randomSleep();
             if (!client.connect(this.endpoint)) break;
 
             doRegistration();
             while(doCmd()) {
+                randomSleep();
             };
 
             client.disconnect();
@@ -55,8 +57,16 @@ class ClientWorker implements Runnable, IChatEvents {
         client.stop();
     }
 
+    void randomSleep() {
+
+        try {
+            sleep(this.getRandomizer().nextInt(30) * 100);
+        }
+        catch (Exception ex) {}
+    }
+
     boolean doCmd() {
-        boolean cmdResult;
+        boolean cmdResult = true;
         int curEvent = this.getRandomizer().nextInt();
         if (0 == (curEvent % 9)) {
             cmdResult = changeUsername();
@@ -120,6 +130,7 @@ class ClientWorker implements Runnable, IChatEvents {
 
     void logIncorrectCmd() {
         logger.error("Incorrect response");
+
     }
 
     // Runnable
