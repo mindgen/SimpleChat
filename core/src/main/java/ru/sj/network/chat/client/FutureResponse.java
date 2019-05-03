@@ -12,7 +12,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class FutureResponse {
 
-    private BaseResponse response;
+    private BaseResponse response = null;
+    private boolean readyResponse = false;
     private Lock lock = new ReentrantLock();
     private Condition readyCondition = lock.newCondition();
 
@@ -26,7 +27,13 @@ public class FutureResponse {
         }
     }
     public boolean isReady() {
-        return this.getResponse() != null;
+        lock.lock();
+        try {
+            return this.readyResponse;
+        }
+        finally {
+            lock.unlock();
+        }
     }
 
     public BaseResponse waitResponse() {
@@ -48,6 +55,7 @@ public class FutureResponse {
     void setResponse(BaseResponse response) {
         lock.lock();
         try {
+            this.readyResponse = true;
             this.response = response;
             readyCondition.signalAll();
         }

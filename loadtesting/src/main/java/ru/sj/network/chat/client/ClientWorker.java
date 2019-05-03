@@ -51,7 +51,6 @@ class ClientWorker implements Runnable, IChatEvents {
             };
 
             client.disconnect();
-            break;
         }
         client.stop();
     }

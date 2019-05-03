@@ -196,13 +196,25 @@ public class ChatClient implements Runnable, IChatClient {
                     socketEventSelector.close();
                     socketEventSelector = null;
                 }
-                requestQueue.clear();
-                responsesQueue.clear();
+                this.queuesLock.lock();
+                try {
+                    requestQueue.clear();
+                    for (FutureResponse future : responsesQueue) {
+                        future.setResponse(null);
+                    }
+                    responsesQueue.clear();
+                }
+                finally {
+                    this.queuesLock.unlock();
+                }
                 msgBuffer.clear();
                 readBuffer.clear();
+
+                notifyAll();
             }
 
             getEventsHandler().OnDisconnect();
+
         }
         catch (Exception e) {}
     }
@@ -241,6 +253,7 @@ public class ChatClient implements Runnable, IChatClient {
 
         try {
             socketEventSelector.close();
+            wait();
         }
         catch (Exception e) {}
     }
