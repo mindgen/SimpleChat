@@ -21,10 +21,24 @@ public class ChatManager implements ISessionsManagerEvents {
     @Autowired
     ChatRoom chat;
 
-    Map<ISession, User> mapping = new HashMap<>();
-    ReadWriteLock stateLock = new ReentrantReadWriteLock();
+    Map<ISession, User> mapping;
+    ReadWriteLock stateLock;
 
-    public List<Message> registerUser(ISession session, String name) throws UserExistException {
+    public ChatManager() {
+        mapping = new HashMap<>();
+        stateLock = new ReentrantReadWriteLock();
+    }
+
+    ChatManager(ChatRoom chat, Map<ISession, User> mapping, ReadWriteLock lock) {
+        this.chat = chat;
+        this.mapping = mapping;
+        this.stateLock = lock;
+    }
+
+    public List<Message> registerUser(ISession session, String name) throws UserExistException,
+                                                                            AlreadyRegisteredException {
+        if (null != _find(session)) throw new AlreadyRegisteredException();
+
         User newUser = chat.getUsers().addUser(name);
 
         List<Message> lastMessages = null;
@@ -55,15 +69,7 @@ public class ChatManager implements ISessionsManagerEvents {
     public void sendMessage(ISession session, String message) throws UnauthorizedAccess {
         User curUser = _checkAccess(session);
 
-        TextMessage chatMessage = null;
-        chat.getMessages().getLocker().writeLock().lock();
-        try {
-            chatMessage = chat.getMessages().addTextMessage(curUser.getName(), message);
-        }
-        finally {
-            chat.getMessages().getLocker().writeLock().unlock();
-        }
-
+        TextMessage chatMessage = chat.getMessages().addTextMessage(curUser.getName(), message);
         sendToAll(chatMessage);
     }
 

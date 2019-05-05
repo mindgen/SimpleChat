@@ -18,6 +18,10 @@ public class SendMsgRequestHandler implements IHandler {
     @Autowired
     ChatManager manager;
 
+    SendMsgRequestHandler(ChatManager manager) {
+        this.manager = manager;
+    }
+
     private final Logger logger = LoggerFactory.getLogger(SendMsgRequestHandler.class);
 
     @Override

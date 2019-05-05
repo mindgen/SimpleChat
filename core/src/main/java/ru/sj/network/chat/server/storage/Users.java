@@ -3,6 +3,10 @@ package ru.sj.network.chat.server.storage;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Created by Eugene Sinitsyn
@@ -10,8 +14,15 @@ import java.util.HashMap;
 
 @Component
 public class Users extends LockedEntity  {
-    public Users(){
+
+    public Users() {
+        super(new ReentrantReadWriteLock());
         this.users = new HashMap<String, User>();
+    }
+
+    public Users(Map<String, User> users, ReadWriteLock lock){
+        super(lock);
+        this.users = users;
     }
 
     public int count() {
@@ -69,6 +80,7 @@ public class Users extends LockedEntity  {
         this.getWriteLock().lock();
         try
         {
+            if (user.getName() == newName) return;
             if (null != this._findByName(newName)) throw new UserExistException();
 
             this.users.remove(user.getName());
@@ -84,5 +96,5 @@ public class Users extends LockedEntity  {
     protected User _findByName(String name) { return this.users.get(name); }
     protected void _removeUser(String name) { this.users.remove(name); }
 
-    private HashMap<String, User> users;
+    private Map<String, User> users;
 }

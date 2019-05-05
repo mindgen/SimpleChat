@@ -18,6 +18,10 @@ public class ChangeNameHandler implements IHandler {
     @Autowired
     ChatManager manager;
 
+    ChangeNameHandler(ChatManager manger) {
+        this.manager = manger;
+    }
+
     private final Logger logger = LoggerFactory.getLogger(ChangeNameHandler.class);
 
     @Override

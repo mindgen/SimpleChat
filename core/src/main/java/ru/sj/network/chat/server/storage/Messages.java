@@ -20,8 +20,15 @@ import static java.lang.Integer.min;
 public class Messages extends LockedEntity{
     private AtomicInteger curId;
 
-    public Messages(){
+    public Messages() {
+        super(new ReentrantReadWriteLock());
         this.msgContainer = new ArrayList<Message>();
+        curId = new AtomicInteger(0);
+    };
+
+    public Messages(List<Message> msgContainer, ReadWriteLock lock) {
+        super(lock);
+        this.msgContainer = msgContainer;
         curId = new AtomicInteger(0);
     };
 
@@ -36,7 +43,7 @@ public class Messages extends LockedEntity{
     }
 
     public TextMessage addTextMessage(String user, String text) {
-        TextMessage newMsg = new TextMessage(user, this.curId.incrementAndGet(), text);
+        TextMessage newMsg = new TextMessage(user, this.getNextId(), text);
         this.getWriteLock().lock();
         try {
             this._add(newMsg);
@@ -59,16 +66,6 @@ public class Messages extends LockedEntity{
         }
     }
 
-    public List<Message> getRange(long startTime, int count) {
-        this.getReadLock().lock();
-        try {
-            return this._getMessages(startTime, count);
-        }
-        finally {
-            this.getReadLock().unlock();
-        }
-    }
-
     public List<Message> getLast(int count) {
         this.getReadLock().lock();
         try {
@@ -77,6 +74,10 @@ public class Messages extends LockedEntity{
         finally {
             this.getReadLock().unlock();
         }
+    }
+
+    protected int getNextId() {
+        return this.curId.incrementAndGet();
     }
 
     protected int _count() {
@@ -89,24 +90,17 @@ public class Messages extends LockedEntity{
 
     protected Message _findById(int id) {
         int start_idx = Collections.binarySearch(this.msgContainer, new SearchMessage(id), (Message m1, Message m2) ->
-        { return m2.id == m1.id ? 0 : -1; } );
+        { return Integer.compare(m1.getId(), m2.getId()); } );
 
         return this.msgContainer.get(start_idx);
     }
 
-    protected List<Message> _getMessages(long startTime, int count) {
-        int start_idx = Collections.binarySearch(this.msgContainer, new SearchMessage(startTime), (Message m1, Message m2) ->
-        {return m2.timestamp > m1.timestamp ? 0 : -1; } );
-
-        return this.msgContainer.subList(start_idx, min(start_idx + count, this._count() - 1));
-    }
-
     protected List<Message> _getMessages(int count) {
+        int lastIdx = this.msgContainer.size() - 1;
         int startIdx = this.msgContainer.size() - count;
-        int lastIdx = startIdx + count;
         if (startIdx < 0) startIdx = 0;
         return this.msgContainer.subList(startIdx, lastIdx);
     }
 
-    private ArrayList<Message> msgContainer;
+    private List<Message> msgContainer;
 }

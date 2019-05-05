@@ -1,15 +1,19 @@
 package ru.sj.network.chat.server.storage;
 
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 /**
  * Created by Eugene Sinitsyn
  */
 
 public class User extends LockedEntity {
     User() {
+        super(new ReentrantReadWriteLock());
         this.init("");
     }
 
     User(String name) {
+        super(new ReentrantReadWriteLock());
         this.init(name);
     }
 
@@ -19,15 +23,24 @@ public class User extends LockedEntity {
 
     private String name;
     public String getName() {
+        String name;
         this.getReadLock().lock();
-        String name = this.name;
-        this.getReadLock().unlock();
+        try {
+            name = this.name;
+        }
+        finally {
+            this.getReadLock().unlock();
+        }
 
         return name;
     }
     void setName(String name) {
         this.getWriteLock().lock();
-        this.name = name;
-        this.getWriteLock().unlock();
+        try {
+            this.name = name;
+        }
+        finally {
+            this.getWriteLock().unlock();
+        }
     }
 }

@@ -19,6 +19,10 @@ public class RegistrationResponse extends BaseResponse {
     RegistrationResponse(List<Message> messages) {
         this.setCode(StatusCode.OK);
         this.msgList = new ArrayList<>();
+        initMessagelist(messages);
+    }
+
+    void initMessagelist(List<Message> messages) {
         CollectionUtil.copyStorageMessageToModel(messages, this.msgList);
     }
 

@@ -18,6 +18,10 @@ public class GetUsersCountRequestHandler implements IHandler {
     @Autowired
     ChatManager manager;
 
+    GetUsersCountRequestHandler(ChatManager manager) {
+        this.manager = manager;
+    }
+
     private final Logger logger = LoggerFactory.getLogger(GetUsersCountRequestHandler.class);
 
     @Override

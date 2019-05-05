@@ -11,6 +11,7 @@ import ru.sj.network.chat.transport.INetworkTransport;
 import java.nio.channels.SelectionKey;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Created by Eugene Sinitsyn
@@ -32,10 +33,19 @@ public class SessionsManagerImpl implements ISessionsManager {
         this.bufFactory = bufFactory;
     }
 
+    SessionsManagerImpl(INetworkTransport transport,
+                        ISessionBufferFactory bufFactory,
+                        HashMap<ISessionId, ISession> container) {
+
+        mSessions = container;
+        netTransport = transport;
+        this.bufFactory = bufFactory;
+    }
+
     @Override
     public ISession openSession(SelectionKey sessionKey) {
         SessionImpl newSession = new SessionImpl(this, this.bufFactory.createRequestBuffer(),
-                                                    new LinkedList<>(), new LinkedList<>(), sessionKey);
+                                                    new LinkedList<>(), new LinkedList<>(), sessionKey, new ReentrantLock());
         mSessions.put(newSession.getId(), newSession);
         if (null != this.events_handler) this.events_handler.onOpenSession(newSession);
 
@@ -49,7 +59,7 @@ public class SessionsManagerImpl implements ISessionsManager {
         if (!this.equals(session.getManager())) return;
 
         if (null != this.events_handler) this.events_handler.onCloseSession(session);
-        ((SessionImpl)session).freeResources();
+        session.freeResources();
         mSessions.remove(session.getId());
 
         logger.info("Close session id - '{}", session.getId().toString());

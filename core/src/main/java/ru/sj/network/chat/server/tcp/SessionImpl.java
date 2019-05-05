@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.util.Queue;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -26,13 +27,13 @@ public class SessionImpl implements ISession {
     BufferedResponseWriter buffWriter;
 
     Queue<Response> realTimeResponseStorage;
-    ReentrantLock realTimeStorageLock;
+    Lock realTimeStorageLock;
 
     SelectionKey selKey;
 
     public SessionImpl(ISessionsManager manager, IMessageBuffer buffer,
                        Queue<Response> responseStorage, Queue<Response> realTimeResponseStorage,
-                       SelectionKey selKey) {
+                       SelectionKey selKey, Lock storageLock) {
         this.mId = SessionIdImp.generateNew();
         this.mManager = manager;
         this.reqBuffer = buffer;
@@ -41,7 +42,21 @@ public class SessionImpl implements ISession {
         this.buffWriter = new BufferedResponseWriter();
 
         this.realTimeResponseStorage = realTimeResponseStorage;
-        realTimeStorageLock = new ReentrantLock();
+        realTimeStorageLock = storageLock;
+    }
+
+    SessionImpl(ISessionsManager manager, IMessageBuffer buffer,
+                Queue<Response> responseStorage, Queue<Response> realTimeResponseStorage,
+                SelectionKey selKey, Lock storageLock, BufferedResponseWriter writer) {
+        this.mId = SessionIdImp.generateNew();
+        this.mManager = manager;
+        this.reqBuffer = buffer;
+        this.responseStorage = responseStorage;
+        this.selKey = selKey;
+        this.buffWriter = writer;
+
+        this.realTimeResponseStorage = realTimeResponseStorage;
+        realTimeStorageLock = storageLock;
     }
 
     @Override
@@ -84,16 +99,20 @@ public class SessionImpl implements ISession {
     @Override
     public void updateWriteBuffer() throws IOException {
         if (buffWriter.writeResponse(responseStorage.peek(), this.getManager().getTransport())) {
-            responseStorage.remove();
+            responseStorage.poll();
         }
         else {
             realTimeStorageLock.lock();
-            if (buffWriter.writeResponse(realTimeResponseStorage.peek(), this.getManager().getTransport())) {
-                realTimeResponseStorage.remove();
-            } else if (buffWriter.isEmpty()) {
-                setNeedWriteToSocket(false);
+            try {
+                if (buffWriter.writeResponse(realTimeResponseStorage.peek(), this.getManager().getTransport())) {
+                    realTimeResponseStorage.poll();
+                } else if (buffWriter.isEmpty()) {
+                    setNeedWriteToSocket(false);
+                }
             }
-            realTimeStorageLock.unlock();
+            finally {
+                realTimeStorageLock.unlock();
+            }
         }
     }
 
@@ -107,7 +126,8 @@ public class SessionImpl implements ISession {
         return this.reqBuffer;
     }
 
-    void freeResources() {
+    @Override
+    public void freeResources() {
         responseStorage.clear();
         realTimeStorageLock.lock();
         this.selKey = null;

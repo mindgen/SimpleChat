@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.sj.network.chat.api.model.request.RegistrationRequest;
 import ru.sj.network.chat.api.model.response.RegistrationResponse;
+import ru.sj.network.chat.server.AlreadyRegisteredException;
 import ru.sj.network.chat.server.ChatManager;
 import ru.sj.network.chat.server.IHandler;
 import ru.sj.network.chat.server.storage.Message;
@@ -21,6 +22,10 @@ public class RegistrationRequestHandler implements IHandler {
     @Autowired
     ChatManager manager;
 
+    RegistrationRequestHandler(ChatManager manager) {
+        this.manager = manager;
+    }
+
     private final Logger logger = LoggerFactory.getLogger(RegistrationRequestHandler.class);
 
     @Override
@@ -35,8 +40,11 @@ public class RegistrationRequestHandler implements IHandler {
         try {
             lastMsgs = manager.registerUser(request.getSession(), regModel.getValue());
         }
-        catch (UserExistException e)
-        {
+        catch (UserExistException e) {
+            response.setData(RegistrationResponse.createFail());
+            return;
+        }
+        catch (AlreadyRegisteredException e) {
             response.setData(RegistrationResponse.createFail());
             return;
         }

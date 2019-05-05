@@ -29,4 +29,6 @@ public interface ISession {
     ByteBuffer getWriteBuffer();
 
     IMessageBuffer getRequestBuffer();
+
+    public void freeResources();
 }
