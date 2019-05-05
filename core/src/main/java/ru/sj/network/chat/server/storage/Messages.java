@@ -96,8 +96,8 @@ public class Messages extends LockedEntity{
     }
 
     protected List<Message> _getMessages(int count) {
-        int lastIdx = this.msgContainer.size() - 1;
         int startIdx = this.msgContainer.size() - count;
+        int lastIdx = startIdx + count;
         if (startIdx < 0) startIdx = 0;
         return this.msgContainer.subList(startIdx, lastIdx);
     }

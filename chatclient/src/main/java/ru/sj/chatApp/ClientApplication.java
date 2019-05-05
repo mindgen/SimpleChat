@@ -179,6 +179,7 @@ public final class ClientApplication implements IChatEvents {
         while (true) {
             doEnterName();
             FutureResponse future = client.registration(this.userName);
+            if (null == future) break;
             BaseResponse response = future.waitResponse();
             RegistrationResponse regResp = utils.checkResponse(response, RegistrationResponse.class, this);
             if (null != regResp) {

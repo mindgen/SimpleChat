@@ -141,7 +141,7 @@ public class MessagesTest {
     @Test
     public void getLastMessages() {
         when(this.msgContainer.size()).thenReturn(10);
-        when(this.msgContainer.subList(8,9)).thenReturn(subList);
+        when(this.msgContainer.subList(8,10)).thenReturn(subList);
 
         List<Message> result = this.msgStorage.getLast(2);
         assertEquals(subList, result);
